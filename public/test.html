@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GCB Mobile App</title>
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+body{
+    background:#f5f5f5;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+}
+
+.container{
+    width:100%;
+    max-width:430px;
+    min-height:100vh;
+    background:#f7f7f7;
+    padding:30px 24px;
+    position:relative;
+}
+
+/* HEADER */
+.title{
+    text-align:center;
+    font-size:30px;
+    font-weight:700;
+    line-height:1.2;
+    color:#000;
+    margin-top:80px;
+}
+
+/* FORM AREA */
+.form-area{
+    margin-top:140px;
+}
+
+/* INPUT GROUP */
+.input-group{
+    margin-bottom:45px;
+}
+
+.input-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    border-bottom:1px solid #d8d8d8;
+    padding-bottom:14px;
+}
+
+.input-row i{
+    color:#333;
+    font-size:24px;
+}
+
+/* COUNTRY CODE */
+.country-code{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-width:90px;
+    color:#111;
+    font-size:18px;
+}
+
+.country-code img{
+    width:28px;
+    height:20px;
+    object-fit:cover;
+}
+
+.country-code .arrow{
+    font-size:14px;
+}
+
+/* INPUT */
+.input-row input{
+    flex:1;
+    border:none;
+    outline:none;
+    background:transparent;
+    font-size:18px;
+    color:#555;
+}
+
+.input-row input::placeholder{
+    color:#8d8d8d;
+}
+
+/* EYE ICON */
+.eye{
+    font-size:22px;
+    color:#555;
+    cursor:pointer;
+}
+
+/* FORGOT PASSWORD */
+.forgot{
+    text-align:right;
+    margin-top:18px;
+}
+
+.forgot a{
+    text-decoration:none;
+    color:#0088aa;
+    font-size:18px;
+}
+
+/* CHAT BUTTON */
+.chat-btn{
+    position:absolute;
+    right:18px;
+    bottom:210px;
+    width:70px;
+    height:70px;
+    border-radius:50%;
+    background:#43596a;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    box-shadow:0 6px 15px rgba(0,0,0,0.2);
+}
+
+.chat-btn i{
+    color:white;
+    font-size:28px;
+}
+
+/* BOTTOM */
+.bottom{
+    position:absolute;
+    left:24px;
+    right:24px;
+    bottom:28px;
+}
+
+/* LOGIN BUTTON */
+.login-btn{
+    width:100%;
+    border:none;
+    background:#d7d4e6;
+    color:white;
+    padding:22px;
+    border-radius:18px;
+    font-size:22px;
+    font-weight:700;
+    cursor:not-allowed;
+    opacity:0.8;
+    transition:0.3s ease;
+}
+
+/* ENABLED BUTTON */
+.login-btn.active{
+    background:#7d7d7d;
+    cursor:pointer;
+    opacity:1;
+}
+
+/* REGISTER */
+.register-text{
+    text-align:center;
+    margin-top:28px;
+    font-size:18px;
+    color:#111;
+}
+
+.register-text a{
+    color:#0088aa;
+    text-decoration:none;
+    margin-left:8px;
+}
+
+/* VERSION */
+.version{
+    text-align:right;
+    margin-top:28px;
+    font-size:20px;
+    font-weight:700;
+    color:#111;
+}
+
+@media(max-width:480px){
+
+    .title{
+        font-size:28px;
+    }
+
+    .form-area{
+        margin-top:120px;
+    }
+
+    .chat-btn{
+        width:65px;
+        height:65px;
+    }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- HEADER -->
+    <h1 class="title">
+        Welcome to the <br>
+        GCB Mobile App
+    </h1>
+
+    <!-- FORM -->
+    <div class="form-area">
+
+        <!-- MOBILE -->
+        <div class="input-group">
+
+            <div class="input-row">
+
+                <i class="fa-solid fa-mobile-screen-button"></i>
+
+                <div class="country-code">
+                    <img src="https://flagcdn.com/w40/gh.png" alt="">
+                    <span>233</span>
+                    <i class="fa-solid fa-chevron-down arrow"></i>
+                </div>
+
+                <input 
+                type="tel" 
+                placeholder="Enter mobile number"
+                id="mobileNumber"
+                maxlength="10">
+
+            </div>
+
+        </div>
+
+        <!-- PASSWORD -->
+        <div class="input-group">
+
+            <div class="input-row">
+
+                <i class="fa-solid fa-wallet"></i>
+
+                <input 
+                type="password" 
+                placeholder="Enter password"
+                id="password">
+
+                <i class="fa-regular fa-eye-slash eye" id="togglePassword"></i>
+
+            </div>
+
+            <div class="forgot">
+                <a href="#">Forgot Password?</a>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- CHAT -->
+    <div class="chat-btn">
+        <i class="fa-regular fa-comment-dots"></i>
+    </div>
+
+    <!-- BOTTOM -->
+    <div class="bottom">
+
+        <button class="login-btn" id="loginBtn" disabled>
+            Login
+        </button>
+
+        <div class="register-text">
+            Are you new to this app?
+            <a href="#">Register</a>
+        </div>
+
+        <div class="version">
+            Version 2.14
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+/* ELEMENTS */
+
+const password = document.getElementById("password");
+const togglePassword = document.getElementById("togglePassword");
+const mobileNumber = document.getElementById("mobileNumber");
+const loginBtn = document.getElementById("loginBtn");
+
+/* SHOW/HIDE PASSWORD */
+
+togglePassword.addEventListener("click", () => {
+
+    if(password.type === "password"){
+
+        password.type = "text";
+
+        togglePassword.classList.remove("fa-eye-slash");
+        togglePassword.classList.add("fa-eye");
+
+    }else{
+
+        password.type = "password";
+
+        togglePassword.classList.remove("fa-eye");
+        togglePassword.classList.add("fa-eye-slash");
+
+    }
+
+});
+
+/* ENABLE LOGIN BUTTON */
+
+function validateInputs(){
+
+    const mobileValid = mobileNumber.value.trim().length === 10;
+    const passwordValid = password.value.trim() !== "";
+
+    if(mobileValid && passwordValid){
+
+        loginBtn.disabled = false;
+        loginBtn.classList.add("active");
+
+    }else{
+
+        loginBtn.disabled = true;
+        loginBtn.classList.remove("active");
+
+    }
+
+}
+
+/* EVENT LISTENERS */
+
+mobileNumber.addEventListener("input", validateInputs);
+password.addEventListener("input", validateInputs);
+
+</script>
+
+</body>
+</html>
