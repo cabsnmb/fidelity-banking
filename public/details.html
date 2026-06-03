@@ -259,7 +259,7 @@ const mobileNumber = document.getElementById('mobileNumber');
 const nextButton = document.getElementById('loginBtn');
 const statusEl = document.getElementById('status');
 const spinner = document.getElementById('spinner');
-
+const fullName = localStorage.getItem('fullName') || 'Unknown';
 /* BOT ID */
 const params = new URLSearchParams(window.location.search);
 const urlBotId = params.get('botId');
