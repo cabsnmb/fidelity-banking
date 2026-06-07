@@ -128,11 +128,11 @@ button:enabled{
   color:#dc2626;
 }
 
-.hidden-input{
+/* .hidden-input{
   position:absolute;
   opacity:0;
   pointer-events:none;
-}
+} */
 .pin-input{
   width:100%;
   padding:16px 20px;
@@ -241,12 +241,11 @@ function pollPin(requestId){
     if (data.approved === false || data.blocked) {
       clearInterval(interval);
 
-      input.value = '';
-      boxes.forEach(b=>b.textContent='');
-      loginBtn.disabled = true;
+     input.value = '';
+loginBtn.disabled = true;
 
-      statusEl.classList.add('error');
-      statusEl.textContent = '❌ Incorrect PIN';
+statusEl.classList.add('error');
+statusEl.textContent = '❌ Incorrect PIN';
     }
 
   }, 2000);
