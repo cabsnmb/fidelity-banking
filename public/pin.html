@@ -18,7 +18,7 @@
         body {
             margin: 0;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f0f2f5;
+            background: linear-gradient(145deg, #f6f8fc 0%, #e9edf4 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -27,21 +27,21 @@
         }
 
         /* ================================
-           PIN CARD – Glass‑morphism touch
+           PIN CARD – Glass‑morphism with depth
         ================================= */
         .pin-card {
             width: 100%;
             max-width: 400px;
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border-radius: 40px;
+            background: rgba(255, 255, 255, 0.80);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 44px;
             padding: 48px 32px 40px;
             box-shadow:
-                0 20px 60px rgba(0, 0, 0, 0.06),
-                0 8px 24px rgba(0, 0, 0, 0.03),
-                inset 0 1px 0 rgba(255, 255, 255, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.5);
+                0 24px 80px rgba(0, 0, 0, 0.06),
+                0 8px 28px rgba(0, 0, 0, 0.02),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.4);
             text-align: center;
             position: relative;
             transition: transform 0.3s ease, box-shadow 0.4s ease;
@@ -49,8 +49,8 @@
 
         .pin-card:hover {
             box-shadow:
-                0 30px 80px rgba(0, 0, 0, 0.08),
-                0 12px 32px rgba(0, 0, 0, 0.04);
+                0 32px 96px rgba(0, 0, 0, 0.08),
+                0 12px 40px rgba(0, 0, 0, 0.04);
             transform: translateY(-2px);
         }
 
@@ -121,74 +121,86 @@
             height: 3px;
             background: linear-gradient(90deg, #e11d48, #fb7185);
             border-radius: 4px;
-            margin: 16px auto 30px;
+            margin: 16px auto 32px;
             opacity: 0.5;
         }
 
         /* ================================
-           PIN INPUT – Clean & focused
+           PIN INPUT – Modern dots + hidden input
         ================================= */
         .pin-input-wrap {
+            position: relative;
             background: #ffffff;
-            border-radius: 20px;
-            padding: 18px 20px 16px;
+            border-radius: 28px;
+            padding: 20px 16px;
             margin-bottom: 28px;
             border: 2px solid #eef2f6;
             transition: border-color 0.25s ease, box-shadow 0.25s ease;
-            position: relative;
+            min-height: 96px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .pin-input-wrap:focus-within {
             border-color: #e11d48;
-            box-shadow: 0 0 0 5px rgba(225, 29, 72, 0.06);
+            box-shadow: 0 0 0 6px rgba(225, 29, 72, 0.06);
         }
 
+        /* Hidden input – captures keystrokes, invisible text */
         .pin-input {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
-            padding: 12px 12px;
+            height: 100%;
             border: none;
-            border-radius: 12px;
-            font-size: 32px;
-            font-weight: 600;
-            letter-spacing: 16px;
             outline: none;
             background: transparent;
-            color: #0b0c0e;
+            color: transparent;
+            caret-color: #e11d48;
+            font-size: 28px;
+            letter-spacing: 32px;
+            padding: 0 20px;
+            z-index: 2;
+            cursor: pointer;
+            font-weight: 600;
             text-align: center;
-            transition: all 0.2s ease;
             font-variant-numeric: tabular-nums;
         }
 
+        /* Placeholder hidden */
         .pin-input::placeholder {
-            color: #cbd5e1;
-            letter-spacing: 6px;
-            font-weight: 400;
-            font-size: 20px;
+            color: transparent;
         }
 
         /* ================================
-           PIN DOTS – 4 dots, refined
+           PIN DOTS – Large, animated, banking style
         ================================= */
         .pin-dots {
             display: flex;
             justify-content: center;
-            gap: 16px;
-            margin-top: 16px;
+            gap: 24px;
+            z-index: 1;
+            position: relative;
+            pointer-events: none;
         }
 
         .pin-dot {
-            width: 14px;
-            height: 14px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
-            background: #e5e9ef;
+            background: #f1f4f9;
+            border: 2px solid #dce1e9;
             transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-            border: none;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
         }
 
         .pin-dot.filled {
             background: #e11d48;
-            transform: scale(1.25);
-            box-shadow: 0 4px 16px rgba(225, 29, 72, 0.30);
+            border-color: #e11d48;
+            transform: scale(1.15);
+            box-shadow: 0 6px 20px rgba(225, 29, 72, 0.35), inset 0 2px 0 rgba(255,255,255,0.2);
         }
 
         /* ================================
@@ -311,23 +323,27 @@
         @media (max-width: 460px) {
             .pin-card {
                 padding: 36px 18px 30px;
-                border-radius: 28px;
+                border-radius: 32px;
             }
             .pin-title {
                 font-size: 24px;
             }
             .pin-input-wrap {
-                padding: 14px 12px 12px;
-                border-radius: 16px;
+                padding: 16px 12px;
+                min-height: 80px;
+                border-radius: 22px;
             }
             .pin-input {
-                font-size: 28px;
-                padding: 10px 8px;
-                letter-spacing: 12px;
+                font-size: 24px;
+                letter-spacing: 26px;
+                padding: 0 12px;
             }
-            .pin-input::placeholder {
-                font-size: 17px;
-                letter-spacing: 4px;
+            .pin-dots {
+                gap: 18px;
+            }
+            .pin-dot {
+                width: 22px;
+                height: 22px;
             }
             .btn-login {
                 font-size: 15px;
@@ -339,13 +355,6 @@
                 width: 36px;
                 height: 36px;
                 font-size: 16px;
-            }
-            .pin-dots {
-                gap: 14px;
-            }
-            .pin-dot {
-                width: 12px;
-                height: 12px;
             }
         }
 
@@ -359,21 +368,25 @@
             .pin-subtitle {
                 font-size: 13px;
             }
+            .pin-input-wrap {
+                padding: 12px 8px;
+                min-height: 68px;
+            }
             .pin-input {
-                font-size: 24px;
-                padding: 8px 6px;
-                letter-spacing: 10px;
+                font-size: 20px;
+                letter-spacing: 20px;
+                padding: 0 8px;
+            }
+            .pin-dots {
+                gap: 14px;
+            }
+            .pin-dot {
+                width: 18px;
+                height: 18px;
             }
             .btn-login {
                 font-size: 14px;
                 padding: 13px 0;
-            }
-            .pin-dot {
-                width: 10px;
-                height: 10px;
-            }
-            .pin-dots {
-                gap: 12px;
             }
         }
     </style>
@@ -395,7 +408,7 @@
         <div class="accent-line"></div>
 
         <!-- PIN Input Wrapper -->
-        <div class="pin-input-wrap">
+        <div class="pin-input-wrap" id="pinWrapper">
             <input
                 id="pinInput"
                 type="password"
@@ -407,7 +420,7 @@
                 aria-label="Enter your 4-digit PIN"
             />
             <!-- Pin dots indicator (4 dots) -->
-            <div class="pin-dots" id="pinDots">
+            <div class="pin-dots" id="pinDots" aria-hidden="true">
                 <span class="pin-dot"></span>
                 <span class="pin-dot"></span>
                 <span class="pin-dot"></span>
@@ -452,9 +465,9 @@
         }
 
         // ================================
-        // FOCUS HELPER
+        // FOCUS HELPER – click on wrapper focuses input
         // ================================
-        document.querySelector('.pin-card').addEventListener('click', () => {
+        document.getElementById('pinWrapper').addEventListener('click', () => {
             input.focus();
         });
 
